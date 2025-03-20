@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import {Avatar} from "@/components/ui/avatar";
 
 const Hero = () => {
   return (
@@ -23,7 +24,7 @@ const Hero = () => {
               <div className="flex items-center">
                 <div className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted" />
+                    <Avatar key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted" />
                   ))}
                 </div>
                 <div className="ml-2">

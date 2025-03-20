@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from 'lucide-react';
+import { ImLeaf } from "react-icons/im";
+
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,8 +18,9 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-center">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-primary"></div>
-          <span className="text-xl font-bold">MindEase</span>
+          <div className="h-8 w-8 rounded-full bg-primary text-white flex justify-center items-center"><ImLeaf />
+          </div>
+          <a href="/"><span className="text-xl font-bold">MindEase</span></a>
         </div>
 
         {/* Desktop Navigation */}
@@ -37,10 +40,8 @@ const Header = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-        <a href="/login">
-          <Button variant="outline">Log In</Button>
-          </a>
-          <Button>Get Started</Button>
+        <a href="/login "><Button variant="outline" className="w-full">Log In</Button></a>
+              <a href="/signup"><Button className="w-full">Get Started</Button></a>
         </div>
 
         {/* Mobile Menu Button */}
@@ -82,8 +83,8 @@ const Header = () => {
               FAQ
             </Link>
             <div className="flex flex-col space-y-2 pt-2">
-              <Button variant="outline" className="w-full">Log In</Button>
-              <Button className="w-full">Get Started</Button>
+              <a href="/login "><Button variant="outline" className="w-full">Log In</Button></a>
+              <a href="/signup"><Button className="w-full">Get Started</Button></a>
             </div>
           </nav>
         </div>
