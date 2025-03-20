@@ -1,12 +1,10 @@
 import type { Metadata } from "next"
-import Header from "@/components/header"
 import Hero from "@/components/hero"
 import Features from "@/components/features"
 import HowItWorks from "@/components/how-it-works"
 import Testimonials from "@/components/testimonials"
 import FAQ from "@/components/faq"
 import CTA from "@/components/cta"
-import Footer from "@/components/footer"
 
 export const metadata: Metadata = {
   title: "MindfulAI | 24/7 Mental Health Support",

@@ -2,6 +2,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Facebook, Twitter, Instagram, Linkedin, Mail } from "lucide-react"
+import { ImLeaf } from "react-icons/im";
+
 
 const Footer = () => {
   return (
@@ -10,7 +12,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary"></div>
+              <div className="h-8 w-8 rounded-full bg-primary text-white flex justify-center items-center">
+            <ImLeaf />
+          </div>
               <span className="text-xl font-bold">MindEase</span>
             </div>
             <p className="text-sm text-muted-foreground">
