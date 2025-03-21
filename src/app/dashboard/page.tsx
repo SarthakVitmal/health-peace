@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { format } from "date-fns"
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   AlertOctagon,
   ArrowRight,
@@ -19,14 +19,14 @@ import {
   ThumbsUp,
   User,
   Video,
-} from "lucide-react"
-import Link from "next/link"
+} from "lucide-react";
+import Link from "next/link";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,8 +35,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Sidebar,
   SidebarContent,
@@ -47,10 +47,34 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function MentalEaseDashboard() {
-  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [firstName, setFirstName] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Fetch user data when the component mounts
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        const data = await response.json();
+
+        if (response.ok) {
+          setFirstName(data.user.firstName); // Set firstName from the response
+        } else {
+          console.error("Failed to fetch user data:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false); // Set loading to false after fetching
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Sample mood data
   const moodData: Record<string, "happy" | "sad" | "depressed"> = {
@@ -62,7 +86,7 @@ export default function MentalEaseDashboard() {
     "2025-03-15": "depressed",
     "2025-03-18": "happy",
     "2025-03-20": "happy",
-  }
+  };
 
   // Sample mood summary data
   const moodSummary = {
@@ -70,7 +94,7 @@ export default function MentalEaseDashboard() {
     sad: 5,
     depressed: 2,
     total: 19,
-  }
+  };
 
   // Sample resources
   const resources = [
@@ -95,7 +119,7 @@ export default function MentalEaseDashboard() {
       description: "An introduction to CBT techniques for managing negative thoughts.",
       href: "/resources/cbt",
     },
-  ]
+  ];
 
   // Quick actions
   const actions = [
@@ -130,7 +154,7 @@ export default function MentalEaseDashboard() {
       color: "text-red-600",
       variant: "destructive" as const,
     },
-  ]
+  ];
 
   // Sidebar menu items
   const menuItems = [
@@ -169,24 +193,28 @@ export default function MentalEaseDashboard() {
       icon: Settings,
       href: "/settings",
     },
-  ]
+  ];
 
   // Helper functions
   const calculatePercentage = (value: number) => {
-    return Math.round((value / moodSummary.total) * 100)
-  }
+    return Math.round((value / moodSummary.total) * 100);
+  };
 
   const getMoodColor = (date: Date | undefined) => {
-    if (!date) return ""
+    if (!date) return "";
 
-    const dateString = format(date, "yyyy-MM-dd")
-    const mood = moodData[dateString]
+    const dateString = format(date, "yyyy-MM-dd");
+    const mood = moodData[dateString];
 
-    if (mood === "happy") return "bg-green-500"
-    if (mood === "sad") return "bg-blue-500"
-    if (mood === "depressed") return "bg-red-500"
+    if (mood === "happy") return "bg-green-500";
+    if (mood === "sad") return "bg-blue-500";
+    if (mood === "depressed") return "bg-red-500";
 
-    return ""
+    return "";
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -199,7 +227,6 @@ export default function MentalEaseDashboard() {
               <HeartPulse className="h-6 w-6 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">MentalEase</span>
             </div>
-            {/* <SidebarTrigger /> */}
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
@@ -281,7 +308,7 @@ export default function MentalEaseDashboard() {
                 <CardContent className="p-6">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Welcome to MentalEase</h2>
+                      <h2 className="text-2xl font-bold text-gray-900">Welcome {firstName}</h2>
                       <p className="mt-1 text-gray-600">Your personal mental health companion</p>
                     </div>
                     <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -401,15 +428,15 @@ export default function MentalEaseDashboard() {
                   {/* Calendar Grid */}
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: 31 }, (_, i) => {
-                      const day = i + 1
-                      const currentDate = new Date(2025, 2, day) // March 2025
-                      const dateString = format(currentDate, "yyyy-MM-dd")
-                      const mood = moodData[dateString]
+                      const day = i + 1;
+                      const currentDate = new Date(2025, 2, day); // March 2025
+                      const dateString = format(currentDate, "yyyy-MM-dd");
+                      const mood = moodData[dateString];
 
-                      let bgColor = "bg-gray-200"
-                      if (mood === "happy") bgColor = "bg-green-500"
-                      if (mood === "sad") bgColor = "bg-blue-500"
-                      if (mood === "depressed") bgColor = "bg-red-500"
+                      let bgColor = "bg-gray-200";
+                      if (mood === "happy") bgColor = "bg-green-500";
+                      if (mood === "sad") bgColor = "bg-blue-500";
+                      if (mood === "depressed") bgColor = "bg-red-500";
 
                       return (
                         <div
@@ -422,7 +449,7 @@ export default function MentalEaseDashboard() {
                         >
                           {day}
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </CardContent>
@@ -462,5 +489,5 @@ export default function MentalEaseDashboard() {
         </main>
       </div>
     </SidebarProvider>
-  )
+  );
 }
