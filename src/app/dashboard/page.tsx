@@ -55,6 +55,7 @@ export default function MentalEaseDashboard() {
   const [firstName, setFirstName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -64,16 +65,19 @@ export default function MentalEaseDashboard() {
         if (response.ok) {
           setFirstName(data.user.firstName);
         } else {
-          router.push("/login"); 
+          router.push("/login");
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
       } finally {
-        setLoading(false); // Set loading to false after fetching
+        setLoading(false);
       }
     };
 
     fetchUserData();
+    const intervalId = setInterval(fetchUserData, 60000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   // Sample mood data
@@ -138,19 +142,19 @@ export default function MentalEaseDashboard() {
     {
       title: "Resources",
       icon: HeartPulse,
-      href: "/resources",
+      href: "/dashboard/resources",
       color: "text-purple-600",
     },
     {
       title: "Playlists",
       icon: Music,
-      href: "/playlists",
+      href: "/dashboard/playlist",
       color: "text-amber-600",
     },
     {
       title: "Emergency",
       icon: AlertOctagon,
-      href: "/emergency",
+      href: "/dashboard/emergency-assistance",
       color: "text-red-600",
       variant: "destructive" as const,
     },
@@ -166,7 +170,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Chat with AI",
       icon: MessageSquare,
-      href: "/chat",
+      href: "/dashboard/chat",
     },
     {
       title: "Mood Tracking",
@@ -176,7 +180,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Resources",
       icon: HeartPulse,
-      href: "dashboard/resources",
+      href: "/dashboard/resources",
     },
     {
       title: "Playlists",
@@ -191,7 +195,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Settings",
       icon: Settings,
-      href: "/settings",
+      href: "dashboard/settings",
     },
   ];
 
@@ -219,10 +223,10 @@ export default function MentalEaseDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-white font-sans">
+      <div className="flex min-h-screen w-full bg-gradient-to-b from-gray-50 to-white font-sans">
         {/* Sidebar */}
-        <Sidebar className="bg-gray-50 border-r border-gray-200">
-          <SidebarHeader className="flex items-center justify-between p-4">
+        <Sidebar className="bg-white border-r border-gray-100 shadow-sm">
+          <SidebarHeader className="flex items-center justify-between p-6">
             <div className="flex items-center gap-2">
               <HeartPulse className="h-6 w-6 text-blue-600" />
               <span className="text-xl font-bold text-gray-900">MentalEase</span>
@@ -236,7 +240,7 @@ export default function MentalEaseDashboard() {
                     asChild
                     isActive={item.title === "Dashboard"}
                     tooltip={item.title}
-                    className="hover:bg-gray-100 my-1 p-4"
+                    className="hover:bg-gray-50 my-1 p-4"
                   >
                     <Link href={item.href} className="flex items-center gap-2">
                       <item.icon className="h-5 w-5 text-gray-700" />
@@ -247,11 +251,13 @@ export default function MentalEaseDashboard() {
               ))}
             </SidebarMenu>
           </SidebarContent>
-          <SidebarFooter className="p-4">
-            <Button variant="destructive" className="w-full justify-start gap-2">
-              <AlertOctagon className="h-5 w-5" />
-              <span>Emergency Assistance</span>
-            </Button>
+          <SidebarFooter className="p-6">
+            <a href="/dashboard/emergency-assistance" className="cursor-pointer">
+              <Button variant="destructive" className="w-full justify-start gap-2 cursor-pointer">
+                <AlertOctagon className="h-5 w-5" />
+                <span>Emergency Assistance</span>
+              </Button>
+            </a>
             <div className="mt-4 flex items-center justify-between">
               {/* User Button */}
               <DropdownMenu>
@@ -293,19 +299,19 @@ export default function MentalEaseDashboard() {
         </Sidebar>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6 bg-gray-50">
-          <div className="mx-auto w-full">
+        <main className="flex-1 overflow-auto p-8 bg-gradient-to-b from-gray-50 to-white">
+          <div className="mx-auto w-full max-w-7xl">
             {/* Dashboard Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-1">Welcome back to MentalEase. How are you feeling today?</p>
+              <p className="text-gray-600 mt-2">Welcome back to MentalEase. How are you feeling today?</p>
             </div>
 
             {/* Dashboard Content */}
-            <div className="grid gap-6">
+            <div className="grid gap-8">
               {/* Welcome Card */}
-              <Card className="bg-white shadow-sm">
-                <CardContent className="p-6">
+              <Card className="bg-white shadow-lg">
+                <CardContent className="p-8">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900">Welcome {firstName}</h2>
@@ -322,7 +328,7 @@ export default function MentalEaseDashboard() {
               </Card>
 
               {/* Quick Actions */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-white shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-xl font-bold text-gray-900">Quick Actions</CardTitle>
                 </CardHeader>
@@ -346,7 +352,7 @@ export default function MentalEaseDashboard() {
               </Card>
 
               {/* Mood Summary */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-white shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-xl font-bold text-gray-900">Monthly Mood Summary</CardTitle>
                 </CardHeader>
@@ -380,7 +386,7 @@ export default function MentalEaseDashboard() {
               </Card>
 
               {/* Calendar */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
                   <div className="flex items-center space-x-2">
@@ -456,7 +462,7 @@ export default function MentalEaseDashboard() {
               </Card>
 
               {/* Mental Health Resources */}
-              <Card className="bg-white shadow-sm">
+              <Card className="bg-white shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-xl font-bold text-gray-900">Mental Health Resources</CardTitle>
                   <Button variant="ghost" size="sm" asChild>
@@ -470,7 +476,7 @@ export default function MentalEaseDashboard() {
                   <div className="grid gap-4 md:grid-cols-3">
                     {resources.map((resource) => (
                       <Card key={resource.title} className="bg-white shadow-sm">
-                        <div className="p-4">
+                        <div className="p-6">
                           <resource.icon className="h-8 w-8 text-blue-600" />
                           <h3 className="mt-2 text-lg font-semibold text-gray-900">{resource.title}</h3>
                           <p className="text-xs text-gray-600">{resource.type}</p>
