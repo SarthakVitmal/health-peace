@@ -27,6 +27,11 @@ const Header = () => {
             <ImLeaf />
           </div>
           <a href="/"><span className="text-xl font-bold">MindEase</span></a>
+          {isLoggedIn ? (
+            <a href="/dashboard"><Button variant="outline" className="w-full">Dashboard</Button></a>
+          ) : (
+            <a href="/"><Button variant="outline" className="w-full">Home</Button></a>
+          )}
         </div>
 
         {/* Desktop Navigation */}

@@ -22,7 +22,7 @@ function Header1() {
         },
         {
             title: "Resources",
-            href: "/resources",
+            href: "/dashboard/resources",
             
         },
         {

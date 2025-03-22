@@ -176,7 +176,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Resources",
       icon: HeartPulse,
-      href: "/resources",
+      href: "dashboard/resources",
     },
     {
       title: "Playlists",
@@ -460,7 +460,7 @@ export default function MentalEaseDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-xl font-bold text-gray-900">Mental Health Resources</CardTitle>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href="/resources" className="gap-1 text-blue-600 hover:text-blue-700">
+                    <Link href="/dashboard/resources" className="gap-1 text-blue-600 hover:text-blue-700">
                       <span>View all</span>
                       <ArrowRight className="h-4 w-4" />
                     </Link>
