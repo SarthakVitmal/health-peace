@@ -48,13 +48,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useRouter } from "next/navigation";
 
 export default function MentalEaseDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [firstName, setFirstName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
-
-  // Fetch user data when the component mounts
+  const router = useRouter();
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -62,9 +62,9 @@ export default function MentalEaseDashboard() {
         const data = await response.json();
 
         if (response.ok) {
-          setFirstName(data.user.firstName); // Set firstName from the response
+          setFirstName(data.user.firstName);
         } else {
-          console.error("Failed to fetch user data:", data.error);
+          router.push("/login"); 
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -181,7 +181,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Playlists",
       icon: Music,
-      href: "/playlists",
+      href: "dashboard/playlist",
     },
     {
       title: "Feedback",
