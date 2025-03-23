@@ -59,47 +59,81 @@ export default function MentalEaseDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [isMoodModalOpen, setIsMoodModalOpen] = useState<boolean>(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const router = useRouter();
-  const { data: session } = useSession(); 
   const [userId, setUserId] = useState<string | null>(null);
+  const [moodData, setMoodData] = useState<Record<string, string>>({});
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [loadingMoodData, setLoadingMoodData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      const response = await fetch("/api/auth/user");
-      const data = await response.json();
+  const router = useRouter();
+  const { data: session } = useSession();
 
-      if (response.ok) {
-        setFirstName(data.user.firstName); 
-        setUserId(data.user._id); 
-        checkMoodStatus();
-      } else {
-        router.push("/login");
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        const data = await response.json();
+
+        if (response.ok) {
+          setFirstName(data.user.firstName);
+          setUserId(data.user._id);
+          checkMoodStatus();
+        } else {
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchUserData();
-}, [router]);
+    fetchUserData();
+  }, [router]);
+
+  useEffect(() => {
+    const fetchMoodData = async () => {
+      try {
+        const month = format(selectedMonth, "yyyy-MM");
+        const response = await fetch(`/api/mood?userId=${userId}&month=${month}`);
+        const data = await response.json();
+
+        if (response.ok) {
+          const formattedData = data.moods.reduce((acc: Record<string, string>, mood: any) => {
+            const date = format(new Date(mood.date), "yyyy-MM-dd");
+            acc[date] = mood.mood;
+            return acc;
+          }, {});
+          setMoodData(formattedData);
+        } else {
+          setError(data.error || "Failed to fetch mood data");
+        }
+      } catch (error) {
+        setError("Error fetching mood data");
+      } finally {
+        setLoadingMoodData(false);
+      }
+    };
+
+    if (userId) {
+      fetchMoodData();
+    }
+  }, [userId, selectedMonth]);
 
   const checkMoodStatus = async () => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       const response = await fetch(`/api/mood?date=${today}`, {
-        method: "GET", // Ensure the method is GET
+        method: "GET",
       });
-  
+
       if (!response.ok) {
         console.error("Failed to fetch mood status:", response.statusText);
         return;
       }
-  
+
       const data = await response.json();
-  
+
       if (!data.logged) {
         setIsMoodModalOpen(true);
       }
@@ -108,59 +142,74 @@ useEffect(() => {
     }
   };
   
-
   const handleMoodSelection = async (mood: string) => {
     setSelectedMood(mood);
     setIsMoodModalOpen(false);
-  
+
     try {
       if (!userId) {
         throw new Error("User not authenticated");
       }
-  
+
       const payload = {
-        userId, // Use the userId from state
+        userId,
         mood,
         date: format(new Date(), "yyyy-MM-dd"),
       };
-      console.log("Sending payload:", payload); // Log the payload
-  
+      console.log("Sending payload:", payload);
+
       const response = await fetch("/api/mood", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to save mood");
       }
-  
+
       const data = await response.json();
-      console.log("Mood saved successfully:", data); // Log the response
+      console.log("Mood saved successfully:", data);
     } catch (error) {
       console.error("Error saving mood:", error);
     }
   };
 
-  // Sample mood data
-  const moodData: Record<string, "happy" | "sad" | "depressed"> = {
-    "2025-03-01": "happy",
-    "2025-03-05": "happy",
-    "2025-03-08": "happy",
-    "2025-03-10": "sad",
-    "2025-03-12": "sad",
-    "2025-03-15": "depressed",
-    "2025-03-18": "happy",
-    "2025-03-20": "happy",
+  const moodSummary = Object.values(moodData).reduce(
+    (acc: { [key: string]: number }, mood) => {
+      acc[mood] = (acc[mood] || 0) + 1;
+      return acc;
+    },
+    { happy: 0, sad: 0, depressed: 0 }
+  );
+
+  const totalMoods = Object.values(moodSummary).reduce((sum, count) => sum + count, 0);
+
+  
+  const calculatePercentage = (value: number) => {
+    return Math.round((value / totalMoods) * 100);
   };
 
-  // Sample mood summary data
-  const moodSummary = {
-    happy: 12,
-    sad: 5,
-    depressed: 2,
-    total: 19,
+  const getMoodColor = (date: Date | undefined) => {
+    if (!date) return "";
+
+    const dateString = format(date, "yyyy-MM-dd");
+    const mood = moodData[dateString];
+
+    if (mood === "happy") return "bg-green-500";
+    if (mood === "sad") return "bg-blue-500";
+    if (mood === "depressed") return "bg-red-500";
+
+    return "";
   };
+
+  if (loading || loadingMoodData) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   // Sample resources
   const resources = [
@@ -260,28 +309,6 @@ useEffect(() => {
       href: "dashboard/settings",
     },
   ];
-
-  // Helper functions
-  const calculatePercentage = (value: number) => {
-    return Math.round((value / moodSummary.total) * 100);
-  };
-
-  const getMoodColor = (date: Date | undefined) => {
-    if (!date) return "";
-
-    const dateString = format(date, "yyyy-MM-dd");
-    const mood = moodData[dateString];
-
-    if (mood === "happy") return "bg-green-500";
-    if (mood === "sad") return "bg-blue-500";
-    if (mood === "depressed") return "bg-red-500";
-
-    return "";
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <SidebarProvider>
@@ -477,49 +504,50 @@ useEffect(() => {
 
               {/* Calendar */}
               <Card className="bg-white shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    {["happy", "sad", "depressed"].map((mood) => (
-                      <div key={mood} className="flex items-center space-x-1">
-                        <div
-                          className={cn(
-                            "h-3 w-3 rounded-full",
-                            mood === "happy" && "bg-green-500",
-                            mood === "sad" && "bg-blue-500",
-                            mood === "depressed" && "bg-red-500",
-                          )}
-                        />
-                        <span className="text-xs text-gray-600 capitalize">{mood}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-center mb-6">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-[280px] justify-start text-left font-normal bg-white",
-                            !date && "text-gray-400",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 text-gray-600" />
-                          {date ? format(date, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white">
-                        <CalendarComponent
-                          mode="single"
-                          selected={date}
-                          onSelect={setDate}
-                          className="rounded-md border"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
+                <div className="flex items-center space-x-2">
+                  {["happy", "sad", "depressed"].map((mood) => (
+                    <div key={mood} className="flex items-center space-x-1">
+                      <div
+                        className={cn(
+                          "h-3 w-3 rounded-full",
+                          mood === "happy" && "bg-green-500",
+                          mood === "sad" && "bg-blue-500",
+                          mood === "depressed" && "bg-red-500",
+                        )}
+                      />
+                      <span className="text-xs text-gray-600 capitalize">{mood}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center mb-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const prevMonth = new Date(selectedMonth);
+                      prevMonth.setMonth(prevMonth.getMonth() - 1);
+                      setSelectedMonth(prevMonth);
+                    }}
+                  >
+                    Previous Month
+                  </Button>
+                  <span className="text-lg font-bold">
+                    {format(selectedMonth, "MMMM yyyy")}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const nextMonth = new Date(selectedMonth);
+                      nextMonth.setMonth(nextMonth.getMonth() + 1);
+                      setSelectedMonth(nextMonth);
+                    }}
+                  >
+                    Next Month
+                  </Button>
+                </div>
 
                   {/* Calendar Grid */}
                   <div className="grid grid-cols-7 gap-1">

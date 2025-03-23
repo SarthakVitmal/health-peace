@@ -5,7 +5,7 @@ import Mood from "@/models/Mood";
 export async function POST(request: NextRequest) {
   try {
     const { userId, mood, date } = await request.json();
-    console.log("Received data:", { userId, mood, date }); // Log incoming data
+    console.log("Received data:", { userId, mood, date }); 
 
     await connectToDatabase();
 
@@ -33,25 +33,38 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 export async function GET(request: NextRequest) {
-  try {
-    await connectToDatabase();
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const moodEntry = await Mood.findOne({ date: { $gte: today } });
-
-    if (moodEntry) {
-      return NextResponse.json({ logged: true, mood: moodEntry.mood });
-    } else {
-      return NextResponse.json({ logged: false });
+    try {
+      const { searchParams } = new URL(request.url);
+      const userId = searchParams.get("userId");
+      const month = searchParams.get("month"); // Format: "YYYY-MM"
+  
+      if (!userId || !month) {
+        return NextResponse.json(
+          { error: "User ID and month are required." },
+          { status: 400 }
+        );
+      }
+  
+      await connectToDatabase();
+  
+      const startDate = new Date(`${month}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+  
+      const moods = await Mood.find({
+        userId,
+        date: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      });
+  
+      return NextResponse.json({ moods }, { status: 200 });
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Failed to fetch mood data." },
+        { status: 500 }
+      );
     }
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch mood status." },
-      { status: 500 }
-    );
   }
-}
