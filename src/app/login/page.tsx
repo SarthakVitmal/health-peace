@@ -8,6 +8,7 @@ import { toast, Toaster } from 'sonner'
 import { AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useSession, signIn, signOut } from "next-auth/react";
 
 
 export function LoginForm() {
@@ -93,6 +94,18 @@ export function LoginForm() {
                     type="submit"
                 >
                     Login &rarr;
+                </button>
+
+                <button
+                    className="group/btn relative block h-10 w-full mt-5 rounded-md bg-black font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:from-blue-600 dark:to-teal-600 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset] cursor-pointer"
+                    onClick={() => {
+                        setEmail('');
+                        setPassword('');
+                        signIn('google');
+                    }}
+                    type="button"
+                >
+                    Continue with Google
                 </button>
 
                 <div className="mt-4 text-center">
