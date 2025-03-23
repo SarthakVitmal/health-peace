@@ -51,6 +51,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSession } from "next-auth/react";
+import Loader from "@/components/loader";
 
 
 export default function MentalEaseDashboard() {
@@ -77,7 +78,6 @@ export default function MentalEaseDashboard() {
         if (response.ok) {
           setFirstName(data.user.firstName);
           setUserId(data.user._id);
-          checkMoodStatus();
         } else {
           router.push("/login");
         }
@@ -123,24 +123,33 @@ export default function MentalEaseDashboard() {
   const checkMoodStatus = async () => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const response = await fetch(`/api/mood?date=${today}`, {
+  
+      if (!userId) {
+        throw new Error("User ID is missing");
+      }
+  
+      // Fetch mood data for the current month
+      const month = format(new Date(), "yyyy-MM");
+      const response = await fetch(`/api/mood?userId=${userId}&month=${month}`, {
         method: "GET",
       });
-
+  
       if (!response.ok) {
-        console.error("Failed to fetch mood status:", response.statusText);
-        return;
+        throw new Error(`Failed to fetch mood status: ${response.statusText}`);
       }
-
+  
       const data = await response.json();
-
-      if (!data.logged) {
+  
+      // Check if the user has logged their mood for today
+      const todayMood = data.moods.find((mood: any) => mood.date === today);
+      if (!todayMood) {
         setIsMoodModalOpen(true);
       }
     } catch (error) {
       console.error("Error checking mood status:", error);
     }
   };
+
   
   const handleMoodSelection = async (mood: string) => {
     setSelectedMood(mood);
@@ -204,7 +213,7 @@ export default function MentalEaseDashboard() {
   };
 
   if (loading || loadingMoodData) {
-    return <div>Loading...</div>;
+    return <Loader />;
   }
 
   if (error) {
