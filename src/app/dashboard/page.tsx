@@ -49,36 +49,98 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSession } from "next-auth/react";
+
 
 export default function MentalEaseDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [firstName, setFirstName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [isMoodModalOpen, setIsMoodModalOpen] = useState<boolean>(false);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const router = useRouter();
+  const { data: session } = useSession(); 
+  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("/api/auth/user");
-        const data = await response.json();
+useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("/api/auth/user");
+      const data = await response.json();
 
-        if (response.ok) {
-          setFirstName(data.user.firstName);
-        } else {
-          router.push("/login");
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      } finally {
-        setLoading(false);
+      if (response.ok) {
+        setFirstName(data.user.firstName); 
+        setUserId(data.user._id); 
+        checkMoodStatus();
+      } else {
+        router.push("/login");
       }
-    };
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchUserData();
-    const intervalId = setInterval(fetchUserData, 60000);
+  fetchUserData();
+}, [router]);
 
-    return () => clearInterval(intervalId);
-  }, []);
+  const checkMoodStatus = async () => {
+    try {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const response = await fetch(`/api/mood?date=${today}`, {
+        method: "GET", // Ensure the method is GET
+      });
+  
+      if (!response.ok) {
+        console.error("Failed to fetch mood status:", response.statusText);
+        return;
+      }
+  
+      const data = await response.json();
+  
+      if (!data.logged) {
+        setIsMoodModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error checking mood status:", error);
+    }
+  };
+  
+
+  const handleMoodSelection = async (mood: string) => {
+    setSelectedMood(mood);
+    setIsMoodModalOpen(false);
+  
+    try {
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+  
+      const payload = {
+        userId, // Use the userId from state
+        mood,
+        date: format(new Date(), "yyyy-MM-dd"),
+      };
+      console.log("Sending payload:", payload); // Log the payload
+  
+      const response = await fetch("/api/mood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to save mood");
+      }
+  
+      const data = await response.json();
+      console.log("Mood saved successfully:", data); // Log the response
+    } catch (error) {
+      console.error("Error saving mood:", error);
+    }
+  };
 
   // Sample mood data
   const moodData: Record<string, "happy" | "sad" | "depressed"> = {
@@ -317,6 +379,34 @@ export default function MentalEaseDashboard() {
                       <h2 className="text-2xl font-bold text-gray-900">Welcome {firstName}</h2>
                       <p className="mt-1 text-gray-600">Your personal mental health companion</p>
                     </div>
+
+                    <Dialog open={isMoodModalOpen} onOpenChange={setIsMoodModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>How are you feeling today?</DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center gap-4">
+                <Button
+                  className="bg-green-500 text-white hover:bg-green-600"
+                  onClick={() => handleMoodSelection("happy")}
+                >
+                  😊 Happy
+                </Button>
+                <Button
+                  className="bg-yellow-500 text-white hover:bg-yellow-600"
+                  onClick={() => handleMoodSelection("neutral")}
+                >
+                  😐 Neutral
+                </Button>
+                <Button
+                  className="bg-red-500 text-white hover:bg-red-600"
+                  onClick={() => handleMoodSelection("sad")}
+                >
+                  😔 Sad
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
                     <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700">
                       <Link href="/chat">
                         <MessageSquare className="h-4 w-4" />
