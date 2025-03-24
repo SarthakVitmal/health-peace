@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://sarthak:sarthak@cluster0.cwdj5.mongodb.net/";
+const MONGO_URL = process.env.MONGO_URL || "mongodb+srv://sarthak:sarthak@cluster0.cwdj5.mongodb.net/mindease";
 
 if (!MONGO_URL) {
   throw new Error('MONGO_URL is not set');

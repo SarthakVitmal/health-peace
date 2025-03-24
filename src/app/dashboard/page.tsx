@@ -78,6 +78,7 @@ export default function MentalEaseDashboard() {
         if (response.ok) {
           setFirstName(data.user.firstName);
           setUserId(data.user._id);
+          checkMoodStatus(data.user._id);
         } else {
           router.push("/login");
         }
@@ -120,7 +121,7 @@ export default function MentalEaseDashboard() {
     }
   }, [userId, selectedMonth]);
 
-  const checkMoodStatus = async () => {
+  const checkMoodStatus = async (userId: string) => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
   
@@ -128,22 +129,17 @@ export default function MentalEaseDashboard() {
         throw new Error("User ID is missing");
       }
   
-      // Fetch mood data for the current month
-      const month = format(new Date(), "yyyy-MM");
-      const response = await fetch(`/api/mood?userId=${userId}&month=${month}`, {
-        method: "GET",
-      });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to fetch mood status: ${response.statusText}`);
-      }
-  
+      // Check if mood was already recorded today
+      const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
       const data = await response.json();
   
-      // Check if the user has logged their mood for today
-      const todayMood = data.moods.find((mood: any) => mood.date === today);
-      if (!todayMood) {
-        setIsMoodModalOpen(true);
+      if (response.ok) {
+        // If no mood was found for today, open the modal
+        if (!data.mood) {
+          setIsMoodModalOpen(true);
+        }
+      } else {
+        throw new Error(`Failed to check mood status: ${data.error}`);
       }
     } catch (error) {
       console.error("Error checking mood status:", error);
