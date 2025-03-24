@@ -31,11 +31,9 @@ export default async function handler(
             content: summaryText
           }
         ],
-        model: 'mixtral-8x7b-32768'
+        model: ''
       });
 
-      // Here you would typically save the summary to your database
-      // For demonstration, we'll just log it
       console.log('Session Summary:', summaryChatCompletion.choices[0]?.message?.content);
 
       res.status(200).json({ 
