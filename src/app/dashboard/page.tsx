@@ -124,15 +124,15 @@ export default function MentalEaseDashboard() {
   const checkMoodStatus = async (userId: string) => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-  
+
       if (!userId) {
         throw new Error("User ID is missing");
       }
-  
+
       // Check if mood was already recorded today
       const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
       const data = await response.json();
-  
+
       if (response.ok) {
         // If no mood was found for today, open the modal
         if (!data.mood) {
@@ -146,7 +146,7 @@ export default function MentalEaseDashboard() {
     }
   };
 
-  
+
   const handleMoodSelection = async (mood: string) => {
     setSelectedMood(mood);
     setIsMoodModalOpen(false);
@@ -190,7 +190,7 @@ export default function MentalEaseDashboard() {
 
   const totalMoods = Object.values(moodSummary).reduce((sum, count) => sum + count, 0);
 
-  
+
   const calculatePercentage = (value: number) => {
     return Math.round((value / totalMoods) * 100);
   };
@@ -352,43 +352,6 @@ export default function MentalEaseDashboard() {
                 <span>Emergency Assistance</span>
               </Button>
             </a>
-            <div className="mt-4 flex items-center justify-between">
-              {/* User Button */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                      <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="start" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">User</p>
-                      <p className="text-xs leading-none text-muted-foreground">user@example.com</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </SidebarFooter>
         </Sidebar>
 
@@ -413,32 +376,32 @@ export default function MentalEaseDashboard() {
                     </div>
 
                     <Dialog open={isMoodModalOpen} onOpenChange={setIsMoodModalOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>How are you feeling today?</DialogTitle>
-              </DialogHeader>
-              <div className="flex justify-center gap-4">
-                <Button
-                  className="bg-green-500 text-white hover:bg-green-600"
-                  onClick={() => handleMoodSelection("happy")}
-                >
-                  😊 Happy
-                </Button>
-                <Button
-                  className="bg-yellow-500 text-white hover:bg-yellow-600"
-                  onClick={() => handleMoodSelection("neutral")}
-                >
-                  😐 Neutral
-                </Button>
-                <Button
-                  className="bg-red-500 text-white hover:bg-red-600"
-                  onClick={() => handleMoodSelection("sad")}
-                >
-                  😔 Sad
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>How are you feeling today?</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex justify-center gap-4">
+                          <Button
+                            className="bg-green-500 text-white hover:bg-green-600"
+                            onClick={() => handleMoodSelection("happy")}
+                          >
+                            😊 Happy
+                          </Button>
+                          <Button
+                            className="bg-yellow-500 text-white hover:bg-yellow-600"
+                            onClick={() => handleMoodSelection("neutral")}
+                          >
+                            😐 Neutral
+                          </Button>
+                          <Button
+                            className="bg-red-500 text-white hover:bg-red-600"
+                            onClick={() => handleMoodSelection("sad")}
+                          >
+                            😔 Sad
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                     <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700">
                       <Link href="/chat">
                         <MessageSquare className="h-4 w-4" />
@@ -509,50 +472,50 @@ export default function MentalEaseDashboard() {
 
               {/* Calendar */}
               <Card className="bg-white shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
-                <div className="flex items-center space-x-2">
-                  {["happy", "sad", "depressed"].map((mood) => (
-                    <div key={mood} className="flex items-center space-x-1">
-                      <div
-                        className={cn(
-                          "h-3 w-3 rounded-full",
-                          mood === "happy" && "bg-green-500",
-                          mood === "sad" && "bg-blue-500",
-                          mood === "depressed" && "bg-red-500",
-                        )}
-                      />
-                      <span className="text-xs text-gray-600 capitalize">{mood}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const prevMonth = new Date(selectedMonth);
-                      prevMonth.setMonth(prevMonth.getMonth() - 1);
-                      setSelectedMonth(prevMonth);
-                    }}
-                  >
-                    Previous Month
-                  </Button>
-                  <span className="text-lg font-bold">
-                    {format(selectedMonth, "MMMM yyyy")}
-                  </span>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const nextMonth = new Date(selectedMonth);
-                      nextMonth.setMonth(nextMonth.getMonth() + 1);
-                      setSelectedMonth(nextMonth);
-                    }}
-                  >
-                    Next Month
-                  </Button>
-                </div>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    {["happy", "sad", "depressed"].map((mood) => (
+                      <div key={mood} className="flex items-center space-x-1">
+                        <div
+                          className={cn(
+                            "h-3 w-3 rounded-full",
+                            mood === "happy" && "bg-green-500",
+                            mood === "sad" && "bg-blue-500",
+                            mood === "depressed" && "bg-red-500",
+                          )}
+                        />
+                        <span className="text-xs text-gray-600 capitalize">{mood}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mb-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const prevMonth = new Date(selectedMonth);
+                        prevMonth.setMonth(prevMonth.getMonth() - 1);
+                        setSelectedMonth(prevMonth);
+                      }}
+                    >
+                      Previous Month
+                    </Button>
+                    <span className="text-lg font-bold">
+                      {format(selectedMonth, "MMMM yyyy")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const nextMonth = new Date(selectedMonth);
+                        nextMonth.setMonth(nextMonth.getMonth() + 1);
+                        setSelectedMonth(nextMonth);
+                      }}
+                    >
+                      Next Month
+                    </Button>
+                  </div>
 
                   {/* Calendar Grid */}
                   <div className="grid grid-cols-7 gap-1">
