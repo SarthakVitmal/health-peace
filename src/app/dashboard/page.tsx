@@ -246,7 +246,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Chat with AI",
       icon: MessageSquare,
-      href: "/chat",
+      href: "/dashboard/chat",
       color: "text-blue-600",
     },
     {
@@ -403,7 +403,7 @@ export default function MentalEaseDashboard() {
                       </DialogContent>
                     </Dialog>
                     <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700">
-                      <Link href="/chat">
+                      <Link href="/dashboard/chat">
                         <MessageSquare className="h-4 w-4" />
                         <span>Chat with AI</span>
                       </Link>
@@ -443,7 +443,7 @@ export default function MentalEaseDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {["happy", "sad", "depressed"].map((mood) => (
+                    {["happy", "neutral", "sad"].map((mood) => (
                       <div key={mood} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 capitalize">{mood}</span>
@@ -456,8 +456,8 @@ export default function MentalEaseDashboard() {
                             className={cn(
                               "h-2 rounded-full",
                               mood === "happy" && "bg-green-500",
-                              mood === "sad" && "bg-blue-500",
-                              mood === "depressed" && "bg-red-500",
+                              mood === "neutral" && "bg-blue-500",
+                              mood === "sad" && "bg-red-500",
                             )}
                             style={{
                               width: `${calculatePercentage(moodSummary[mood as keyof typeof moodSummary])}%`,
@@ -475,14 +475,14 @@ export default function MentalEaseDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
                   <div className="flex items-center space-x-2">
-                    {["happy", "sad", "depressed"].map((mood) => (
+                    {["happy", "neutral", "sad"].map((mood) => (
                       <div key={mood} className="flex items-center space-x-1">
                         <div
                           className={cn(
                             "h-3 w-3 rounded-full",
                             mood === "happy" && "bg-green-500",
-                            mood === "sad" && "bg-blue-500",
-                            mood === "depressed" && "bg-red-500",
+                            mood === "neutral" && "bg-blue-500",
+                            mood === "sad" && "bg-red-500",
                           )}
                         />
                         <span className="text-xs text-gray-600 capitalize">{mood}</span>
@@ -527,8 +527,8 @@ export default function MentalEaseDashboard() {
 
                       let bgColor = "bg-gray-200";
                       if (mood === "happy") bgColor = "bg-green-500";
-                      if (mood === "sad") bgColor = "bg-blue-500";
-                      if (mood === "depressed") bgColor = "bg-red-500";
+                      if (mood === "neutral") bgColor = "bg-blue-500";
+                      if (mood === "sad") bgColor = "bg-red-500";
 
                       return (
                         <div

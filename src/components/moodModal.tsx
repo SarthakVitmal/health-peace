@@ -7,10 +7,8 @@ import { cn } from "@/lib/utils";
 
 const moods = [
   { label: "Happy", icon: <Smile className="h-6 w-6" />, color: "bg-green-500" },
-  { label: "Neutral", icon: <Meh className="h-6 w-6" />, color: "bg-yellow-500" },
-  { label: "Sad", icon: <Frown className="h-6 w-6" />, color: "bg-blue-500" },
-  { label: "Stressed", icon: <AlertTriangle className="h-6 w-6" />, color: "bg-orange-500" },
-  { label: "Excited", icon: <Zap className="h-6 w-6" />, color: "bg-purple-500" },
+  { label: "Neutral", icon: <Frown className="h-6 w-6" />, color: "bg-blue-500" },
+  { label: "Sad", icon: <Zap className="h-6 w-6" />, color: "bg-purple-500" },
 ];
 
 export default function MoodModal({ userId }: { userId: string }) {
