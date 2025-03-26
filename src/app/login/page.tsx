@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { useSession, signIn, signOut } from "next-auth/react";
 
 
-export function LoginForm() {
+const LoginPage = () => {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
@@ -138,4 +138,4 @@ export function LoginForm() {
     );
 }
 
-export default LoginForm;
+export default LoginPage;

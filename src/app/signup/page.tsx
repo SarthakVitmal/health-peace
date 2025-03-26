@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 
-export function SignupForm() {
+const SignupForm = () => {
   const [firstname, setFirstname] = React.useState('');
   const [lastname, setLastname] = React.useState('');
   const [email, setEmail] = React.useState('');
