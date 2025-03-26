@@ -53,7 +53,7 @@ const PsychiatristSearch = () => {
           <div className="relative w-full max-w-xl">
             <Input
               type="text"
-              placeholder="Enter your location (e.g., city or zip code)"
+              placeholder="Enter your location (e.g., city)"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="pr-20"
