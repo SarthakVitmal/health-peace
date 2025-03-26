@@ -289,15 +289,15 @@ const MindeaseChatbot: React.FC = () => {
           <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div className="flex max-w-[80%]">
               <Card
-                className={`p-3 border-0 shadow-sm ${
+                className={`p-2 h-fit border-0 shadow-sm ${
                   msg.sender === "user" 
-                    ? "bg-emerald-600 text-white" 
+                    ? "bg-purple-200 text-black" 
                     : "bg-white text-neutral-800"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
                 <p className={`text-xs mt-1 ${
-                  msg.sender === "user" ? "text-emerald-100" : "text-neutral-400"
+                  msg.sender === "user" ? "text-neutral-600" : "text-neutral-400"
                 }`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
@@ -320,7 +320,7 @@ const MindeaseChatbot: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="sticky bottom-0 p-4 border-t bg-white shadow-md">
+      <div className="sticky bottom-0 p-3 border-t bg-white shadow-md">
         <div className="flex items-end gap-2 w-full max-w-4xl mx-auto">
           {/* Voice input button */}
           {/* {speechSupported && (

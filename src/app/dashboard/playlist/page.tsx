@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, Music, ListMusic, Loader2, AlertCircle, Play, Pause, Volume2, Info } from "lucide-react";
+import { Search, Music, Loader2, AlertCircle, Play, Pause, Volume2, Info, RefreshCw } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 const MusicSearch = () => {
   const [selectedOption, setSelectedOption] = useState("songs");
@@ -18,40 +20,107 @@ const MusicSearch = () => {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [audioElements, setAudioElements] = useState<{ [key: string]: HTMLAudioElement }>({});
   const [isMentalHealthRelated, setIsMentalHealthRelated] = useState(true);
+  const [currentMood, setCurrentMood] = useState<string | null>(null);
+  const [recommendedSongs, setRecommendedSongs] = useState<any[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [recommendationError, setRecommendationError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const router = useRouter();
 
   // Mental health music related keywords
-  const mentalHealthMusicKeywords = [
-    "meditation",
-    "relaxation",
-    "calm",
-    "sleep",
-    "anxiety",
-    "stress relief",
-    "mindfulness",
-    "peaceful",
-    "healing",
-    "therapy",
-    "focus",
-    "concentration",
-    "zen",
-    "yoga",
-    "ambient",
-    "soothing",
-    "tranquil",
-    "binaural",
-    "nature sounds",
-    "white noise",
-    "breathing",
-    "relax",
-    "chill",
-    "wellness",
-    "mental health",
-  ];
+  const moodKeywords: Record<string, string[]> = {
+    happy: ["happy", "joyful", "upbeat", "energetic", "positive", "excited"],
+    neutral: ["calm", "peaceful", "relaxing", "instrumental", "ambient"],
+    sad: ["healing", "comforting", "melancholic", "emotional", "soothing"],
+    angry: ["calming", "stress relief", "meditation", "peaceful", "relaxing"],
+    anxious: ["anxiety relief", "calm", "meditation", "breathing", "nature sounds"]
+  };
 
+  //fetch userid
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        const data = await response.json();
+
+        if (response.ok) {
+          setUserId(data.user._id);
+        } else {
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
+
+  //fetch todays mood
+  useEffect(() => {
+    const fetchTodayMood = async () => {
+      try {
+        const today = format(new Date(), "yyyy-MM-dd");
+        const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
+        const data = await response.json();
+        console.log(data)
+    
+        if (response.ok && data.mood) {
+          setCurrentMood(data.mood.mood || data.mood);
+          fetchRecommendedSongs(data.mood.mood || data.moods);
+        }
+      } catch (error) {
+        console.error("Error fetching today's mood:", error);
+      }
+    };
+
+    if (userId) {
+      fetchTodayMood();
+    }
+  }, [userId]);
+
+  const fetchRecommendedSongs = async (mood: string) => {
+    setLoadingRecommendations(true);
+    setRecommendationError("");
+    
+    try {
+      const keywords = moodKeywords[mood] || moodKeywords.neutral;
+      const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+      
+      const token = await getSpotifyToken();
+      const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(randomKeyword)}&type=track&limit=6`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch recommended songs");
+      }
+
+      const data = await response.json();
+      setRecommendedSongs(data.tracks.items);
+    } catch (err) {
+      setRecommendationError("Failed to load recommendations");
+      console.error("Error fetching recommended songs:", err);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+  useEffect(() => {
+    console.log("Current mood:", currentMood);
+    console.log("Recommended songs:", recommendedSongs);
+  }, [currentMood, recommendedSongs]);
   // Check if the search query is related to mental health
   const checkIfMentalHealthRelated = (query: string) => {
     const lowercaseQuery = query.toLowerCase();
-    return mentalHealthMusicKeywords.some((keyword) => lowercaseQuery.includes(keyword.toLowerCase()));
+    return Object.values(moodKeywords).flat().some((keyword: string) => lowercaseQuery.includes(keyword.toLowerCase()));
   };
 
   // Get Spotify access token
@@ -74,10 +143,11 @@ const MusicSearch = () => {
   // Handle search
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
+      setHasSearched(false);
       setError("Please enter a search term");
       return;
     }
-
+    setHasSearched(true);
     setIsLoading(true);
     setError("");
     setPlayingAudio(null);
@@ -235,7 +305,7 @@ const MusicSearch = () => {
         {error && (
           <div className="flex items-center justify-center p-4 mb-6 bg-destructive/10 text-destructive rounded-md">
             <AlertCircle className="h-4 w-4 mr-2" />
-            {error}
+            {typeof error === "string" ? error : JSON.stringify(error)}
           </div>
         )}
 
@@ -377,6 +447,115 @@ const MusicSearch = () => {
             </div>
           )}
         </div>
+
+        {currentMood && !hasSearched && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">
+                Recommended for your {currentMood} mood
+              </h2>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => fetchRecommendedSongs(currentMood)}
+                disabled={loadingRecommendations}
+              >
+                {loadingRecommendations ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </div>
+
+            {recommendationError && (
+              <div className="flex items-center justify-center p-4 mb-6 bg-destructive/10 text-destructive rounded-md">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                {recommendationError}
+              </div>
+            )}
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {loadingRecommendations ? (
+                Array(3)
+                  .fill(0)
+                  .map((_, index) => (
+                    <Card key={index} className="border border-border/50 bg-card/50 backdrop-blur-sm">
+                      <CardContent className="p-6 flex items-center justify-center h-48">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </CardContent>
+                    </Card>
+                  ))
+              ) : recommendedSongs.length > 0 ? (
+                recommendedSongs.map((item, index) => (
+                  <Card
+                    key={index}
+                    className="overflow-hidden border border-border/50 bg-card/50 backdrop-blur-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="relative aspect-square w-full overflow-hidden bg-muted">
+                      <img
+                        src={item.album.images[0]?.url}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute bottom-4 right-4 rounded-full w-12 h-12 bg-primary/90 text-primary-foreground hover:bg-primary"
+                        onClick={() => toggleAudio(item.id, item.preview_url)}
+                      >
+                        {playingAudio === item.id ? (
+                          <Pause className="h-6 w-6" />
+                        ) : (
+                          <Play className="h-6 w-6" />
+                        )}
+                      </Button>
+                    </div>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-base line-clamp-2">{item.name}</CardTitle>
+                      <CardDescription className="line-clamp-1 mt-1">
+                        {item.artists.map((artist: any) => artist.name).join(", ")}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      {playingAudio === item.id && (
+                        <div className="flex items-center gap-2">
+                          <Volume2 className="h-4 w-4 text-muted-foreground" />
+                          <Slider
+                            defaultValue={[100]}
+                            max={100}
+                            step={1}
+                            className="w-full"
+                            onValueChange={(value) => setVolume(item.id, value)}
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0 flex justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        {item.explicit ? "Explicit" : "Clean"}
+                      </Badge>
+                      <a
+                        href={item.external_urls.spotify}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Open in Spotify
+                      </a>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-full text-center p-6 bg-muted rounded-lg">
+                  <p className="text-muted-foreground">No recommendations available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 
         {results.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-8 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
