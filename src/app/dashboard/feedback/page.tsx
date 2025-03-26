@@ -85,10 +85,7 @@ const FeedbackPage = () => {
 
             toast.success("Thank you! Your feedback has been submitted successfully.");
 
-            // Reset form
             setFeedback("");
-            setFirstName("");
-            setEmail("");
             setRating(0);
             setFeedbackType("general");
         } catch (error) {

@@ -52,6 +52,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSession } from "next-auth/react";
 import Loader from "@/components/loader";
+import { toast, Toaster } from "sonner";
 
 
 export default function MentalEaseDashboard() {
@@ -80,10 +81,17 @@ export default function MentalEaseDashboard() {
           setUserId(data.user._id);
           checkMoodStatus(data.user._id);
         } else {
+          if (session) {
+            toast.error("Failed to fetch user data");
+          } else {
+            toast.error("Session expired. Please login again.");
+          }
           router.push("/login");
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
+        toast.error("Session expired. Please login again.");
+        router.push("/login");
       } finally {
         setLoading(false);
       }
@@ -250,12 +258,6 @@ export default function MentalEaseDashboard() {
       color: "text-blue-600",
     },
     {
-      title: "Mood Tracking",
-      icon: CalendarIcon,
-      href: "/mood",
-      color: "text-green-600",
-    },
-    {
       title: "Resources",
       icon: HeartPulse,
       href: "/dashboard/resources",
@@ -265,6 +267,12 @@ export default function MentalEaseDashboard() {
       title: "Playlists",
       icon: Music,
       href: "/dashboard/playlist",
+      color: "text-amber-600",
+    },
+    {
+      title: "Feedback",
+      icon: ThumbsUp,
+      href: "/dashboard/feedback",
       color: "text-amber-600",
     },
     {
@@ -289,11 +297,6 @@ export default function MentalEaseDashboard() {
       href: "/dashboard/chat",
     },
     {
-      title: "Mood Tracking",
-      icon: CalendarIcon,
-      href: "/mood",
-    },
-    {
       title: "Resources",
       icon: HeartPulse,
       href: "/dashboard/resources",
@@ -306,7 +309,7 @@ export default function MentalEaseDashboard() {
     {
       title: "Feedback",
       icon: ThumbsUp,
-      href: "/feedback",
+      href: "/dashboard/feedback",
     },
     {
       title: "Settings",
@@ -580,6 +583,7 @@ export default function MentalEaseDashboard() {
           </div>
         </main>
       </div>
+      <Toaster richColors position='top-center' />
     </SidebarProvider>
   );
 }

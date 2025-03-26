@@ -96,7 +96,7 @@ export function LoginForm() {
                     Login &rarr;
                 </button>
 
-                <button
+                {/* <button
                     className="group/btn relative block h-10 w-full mt-5 rounded-md bg-black font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:from-blue-600 dark:to-teal-600 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset] cursor-pointer"
                     onClick={() => {
                         setEmail('');
@@ -106,7 +106,7 @@ export function LoginForm() {
                     type="button"
                 >
                     Continue with Google
-                </button>
+                </button> */}
 
                 <div className="mt-4 text-center">
                     <Link
