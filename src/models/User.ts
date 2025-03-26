@@ -17,27 +17,17 @@ const UserSchema = new mongoose.Schema({
     password: {
         type: String,
     },
+    provider: { type: String, default: "credentials" },
+    forgotPasswordToken: {
+        type: String,
+    },
+    forgotPasswordTokenExpiration: {
+        type: Date,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
-    provider: { type: String, default: "credentials" },
-    // isVerified: {
-    //     type: Boolean,
-    //     default: false,
-    // },
-    // verificationToken: {
-    //     type: String,
-    // },
-    // verificationTokenExpiration: {
-    //     type: Date,
-    // },
-    // forgotPasswordToken: {
-    //     type: String,
-    // },
-    // forgotPasswordTokenExpiration: {
-    //     type: Date,
-    // },
 });
 
 const User = (mongoose.models && mongoose.models.User) || mongoose.model('User', UserSchema);
