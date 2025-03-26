@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, Mail, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -17,48 +17,47 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email) {
-        setError("Email is required");
-        return;
+      setError("Email is required");
+      return;
     }
 
     try {
-        setError("");
-        setLoading(true);
-        const response = await fetch("/api/auth/forgot-password", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email }),
-        });
+      setError("");
+      setLoading(true);
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
 
-        if (response.status === 404) {
-            setError("Email does not exist. Please check and try again.");
-            return;
-        }
+      if (response.status === 404) {
+        setError("Email does not exist. Please check and try again.");
+        return;
+      }
 
-        if (!response.ok) {
-            throw new Error("Failed to send reset link");
-        }
+      if (!response.ok) {
+        throw new Error("Failed to send reset link");
+      }
 
-        toast.success("Password reset link sent to your email");
-        router.push("/login");
+      toast.success("Password reset link sent to your email",{duration:5000});
     } catch (error) {
-        toast.error("Failed to send reset link. Please try again.");
-        setError("Failed to send reset link. Please check your email and try again.");
+      toast.error("Failed to send reset link. Please try again.");
+      setError("Failed to send reset link. Please check your email and try again.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-50 to-purple-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-lg">
-        
+
         <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-bold text-primary">
             Reset Your Password
@@ -67,7 +66,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             We'll send you a link to reset your password
           </CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -85,7 +84,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 />
               </div>
             </div>
-            
+
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -97,7 +96,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               </motion.div>
             )}
           </CardContent>
-          
+
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
@@ -109,7 +108,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 "Send Reset Link"
               )}
             </Button>
-            
+
             <div className="text-center text-sm text-muted-foreground">
               Remember your password?{" "}
               <Link href="/login" className="text-primary hover:underline">
@@ -119,6 +118,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </CardFooter>
         </form>
       </Card>
+      <Toaster richColors position='top-center' />
     </div>
   );
 }

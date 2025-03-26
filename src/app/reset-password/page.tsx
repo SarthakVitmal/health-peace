@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,8 +53,10 @@ export default function ResetPasswordPage() {
             });
             if (response.status === 200) {
                 toast.success("Password reset successfully!");
+                setTimeout(() => {
+                    router.push("/login");
+                }, 2000);
             }
-            router.push("/login");
         } catch (error: any) {
             const message = error.response?.data?.message ||
                 "Failed to reset password. Please try again.";
@@ -180,6 +182,7 @@ export default function ResetPasswordPage() {
                     </form>
                 </Card>
             </motion.div>
+            <Toaster richColors position='top-center' />
         </div>
     );
 }
