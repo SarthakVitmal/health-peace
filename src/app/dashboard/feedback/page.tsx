@@ -96,7 +96,7 @@ const FeedbackPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
             <div className="max-w-2xl mx-auto">
                 <Card className="border shadow-md bg-white overflow-hidden">
                     <div className="h-2 bg-primary w-full"></div>

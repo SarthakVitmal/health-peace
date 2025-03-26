@@ -7,6 +7,15 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface Message {
   id: string
@@ -23,10 +32,40 @@ const MindeaseChatbot: React.FC = () => {
   const [isListening, setIsListening] = useState<boolean>(false)
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
   const [speechSupported, setSpeechSupported] = useState<boolean>(false)
+  const [showEndSessionModal, setShowEndSessionModal] = useState<boolean>(false)
+  const [isEndingSession, setIsEndingSession] = useState<boolean>(false)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const recognitionRef = useRef<any>(null)
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/auth/user")
+        const data = await response.json()
+
+        if (response.ok) {
+          setUserId(data.user._id)
+        } else {
+          toast.error("Session expired. Please login again.")
+          router.push("/login")
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+        toast.error("Session expired. Please login again.")
+        router.push("/login")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [router])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -145,6 +184,39 @@ const MindeaseChatbot: React.FC = () => {
     window.speechSynthesis.speak(utterance)
   }
 
+  // Initialize session on component mount
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (!userId) return // Don't proceed if userId is not available
+      
+      try {
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }) 
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to create session')
+        }
+        
+        const data = await response.json()
+        setSessionId(data.sessionId)
+      } catch (error) {
+        console.error("Failed to start session:", error)
+        toast.error("Failed to start chat session")
+      }
+    }
+    
+    initializeSession()
+    
+    return () => {
+      if (sessionId) {
+        endSession()
+      }
+    }
+  }, [userId])
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
 
@@ -164,7 +236,11 @@ const MindeaseChatbot: React.FC = () => {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputMessage }),
+        body: JSON.stringify({ 
+          message: inputMessage,
+          sessionId,
+          userId
+        }),
       })
 
       if (!response.ok) throw new Error("Network error")
@@ -201,18 +277,31 @@ const MindeaseChatbot: React.FC = () => {
     }
   }
 
-  const handleEndSession = async () => {
+  const confirmEndSession = () => {
+    setShowEndSessionModal(true)
+  }
+
+  const endSession = async () => {
+    if (!sessionId) return
+    
+    setIsEndingSession(true)
     try {
-      await fetch("/api/session-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
+      const response = await fetch(`/api/sessions/${sessionId}/summary`, {
+        method: "POST"
       })
-      setMessages([])
-      toast.success("Session ended and summary saved")
+      
+      if (!response.ok) {
+        throw new Error("Failed to end session")
+      }
+      
+      toast.success("Session ended successfully")
+      router.push("/dashboard")
     } catch (error) {
       console.error("Error ending session:", error)
       toast.error("Failed to end session")
+    } finally {
+      setIsEndingSession(false)
+      setShowEndSessionModal(false)
     }
   }
 
@@ -232,8 +321,8 @@ const MindeaseChatbot: React.FC = () => {
             <ChevronLeft className="size-5 text-neutral-700" />
           </Link>
           <div className="flex items-center">
-            <div className="p-2 bg-emerald-50 rounded-full mr-3">
-              <Bot className="size-5 text-emerald-600" />
+            <div className="p-2 bg-purple-50 rounded-full mr-3">
+              <Bot className="size-5 text-purple-600" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-neutral-800">MindEase</h1>
@@ -247,14 +336,14 @@ const MindeaseChatbot: React.FC = () => {
               onClick={toggleSpeechOutput}
               variant={isSpeaking ? "default" : "outline"}
               size="icon"
-              className={`rounded-full ${isSpeaking ? 'bg-emerald-600 hover:bg-emerald-700' : 'text-neutral-600'}`}
+              className={`rounded-full ${isSpeaking ? 'bg-purple-600 hover:bg-purple-700' : 'text-neutral-600'}`}
               aria-label={isSpeaking ? "Turn off voice output" : "Turn on voice output"}
             >
               {isSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </Button>
           )}
           <Button 
-            onClick={handleEndSession} 
+            onClick={confirmEndSession} 
             variant="destructive" 
             className="flex items-center gap-2" 
             size="sm"
@@ -269,8 +358,8 @@ const MindeaseChatbot: React.FC = () => {
       <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4 scroll-smooth">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="p-4 bg-emerald-50 rounded-full mb-4">
-              <Bot className="size-10 text-emerald-600" />
+            <div className="p-4 bg-purple-50 rounded-full mb-4">
+              <Bot className="size-10 text-purple-600" />
             </div>
             <h2 className="text-2xl font-bold text-neutral-800 mb-2">Welcome to MindEase</h2>
             <p className="text-neutral-600 max-w-md">
@@ -287,9 +376,9 @@ const MindeaseChatbot: React.FC = () => {
 
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-            <div className="flex max-w-[80%]">
+            <div className="flex max-w-[60%]">
               <Card
-                className={`p-2 h-fit border-0 shadow-sm ${
+                className={`p-2 h-fit border-0 shadow-sm${
                   msg.sender === "user" 
                     ? "bg-purple-200 text-black" 
                     : "bg-white text-neutral-800"
@@ -310,9 +399,9 @@ const MindeaseChatbot: React.FC = () => {
           <div className="flex justify-start">
             <Card className="p-3 border-0 shadow-sm bg-white">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce delay-150" />
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce delay-300" />
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150" />
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300" />
               </div>
             </Card>
           </div>
@@ -329,7 +418,7 @@ const MindeaseChatbot: React.FC = () => {
               variant={isListening ? "destructive" : "outline"}
               size="icon"
               className={`rounded-full flex-shrink-0 ${
-                isListening ? 'bg-red-500 hover:bg-red-600' : 'text-neutral-600'
+                isListening ? 'bg-red-500 hover:bg-red-600 text-white' : 'text-neutral-600'
               }`}
               aria-label={isListening ? "Stop listening" : "Start voice input"}
             >
@@ -353,7 +442,7 @@ const MindeaseChatbot: React.FC = () => {
                 }
               }}
               placeholder={isListening ? "Listening... (speak now)" : "Type your message..."}
-              className="w-full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               rows={1}
             />
 
@@ -366,7 +455,7 @@ const MindeaseChatbot: React.FC = () => {
               className={`absolute right-2 bottom-2 p-1 rounded-full ${
                 isLoading || !inputMessage.trim()
                   ? "text-neutral-400"
-                  : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  : "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
               }`}
               aria-label="Send message"
             >
@@ -375,6 +464,41 @@ const MindeaseChatbot: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* End Session Modal */}
+      <Dialog open={showEndSessionModal} onOpenChange={setShowEndSessionModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>End Session</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to end this session? A summary will be generated and saved to your history.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEndSessionModal(false)}
+              disabled={isEndingSession}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={endSession}
+              disabled={isEndingSession}
+            >
+              {isEndingSession ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Ending Session...
+                </>
+              ) : (
+                "End Session"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

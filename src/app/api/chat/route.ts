@@ -1,76 +1,135 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
+import Session from '@/models/Session';
+import { connectToDatabase } from '@/app/lib/db';
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-  timeout: 30000 // 30 second timeout
+  apiKey: process.env.GROQ_API_KEY
 });
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
+    const { message, sessionId, userId } = await req.json();
+    await connectToDatabase();
 
-    if (!message?.trim()) {
+    if (!sessionId || !userId) {
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'Session ID and User ID are required' },
         { status: 400 }
       );
     }
 
-    // Start timing the request
-    const startTime = Date.now();
+    // 1. Store user message
+    await Session.findByIdAndUpdate(sessionId, {
+      $push: {
+        messages: {
+          text: message,
+          sender: "user",
+          timestamp: new Date()
+        }
+      }
+    });
 
-    const chatCompletion = await groq.chat.completions.create({
+    // 2. Get session history if user asks about past conversations
+    let historyContext = '';
+    if (message.toLowerCase().includes('what did we talk') ||
+      message.toLowerCase().includes('previous session')) {
+
+      const pastSessions = await Session.find({
+        userId,
+        status: "ended",
+        _id: { $ne: sessionId }
+      })
+        .sort({ endedAt: -1 })
+        .limit(3)
+        .select('summary endedAt messages');
+
+      historyContext = pastSessions.map((session: { endedAt: Date; summary: string; messages: { text: string }[] }) =>
+        `Session on ${session.endedAt.toLocaleDateString()}:\n` +
+        `Summary: ${session.summary}\n` +
+        `Last messages: ${session.messages.slice(-3).map((m: { text: string }) => m.text).join(', ')}`
+      ).join('\n\n');
+    }
+
+    // 3. Get current session context
+    interface Message {
+      text: string;
+      sender: string;
+      timestamp: Date;
+    }
+
+    interface SessionDocument {
+      _id: string;
+      userId: string;
+      status: string;
+      endedAt?: Date;
+      summary?: string;
+      messages: Message[];
+    }
+
+    const currentSession = await Session.findById(sessionId) as SessionDocument | null;
+
+    const currentContext = currentSession?.messages
+      .slice(-10)
+      .map((m: Message) => `${m.sender}: ${m.text}`)
+      .join('\n') || 'No current context';
+
+    // 4. Generate AI response with context
+    const groqResponse = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content: `You are MindEase, an AI mental health companion for the MindEase wellness platform. Respond in 2-3 sentences max (30 words or less) unless more detail is requested.
+          content: `You are MindEase, an AI mental health companion designed to provide:
+- Compassionate, judgment-free support
+- Evidence-based therapeutic techniques
+- Personalized emotional guidance
+- Safe space for self-reflection
 
-Platform Features to Reference:
-1. 🎵 Mental Playlists: Curated music for anxiety (calm piano), focus (binaural beats), sleep (nature sounds)
-2. 🧠 Mood Tools: Daily check-ins, emotion tracker, journal prompts
-3. 🧘 Guided Sessions: 5-min breathing exercises, body scans
-4. 📚 Resources: Articles on CBT techniques, stress management
-5. 🤝 Professional Network: Therapist matching service (when needed)
+${historyContext ? `Previous Sessions Recap:\n${historyContext}\n\n` : ''}
+Current Session Context:\n${currentContext}\n\n
+Core Principles:
+1. Practice active listening and validate emotions
+2. Use CBT and mindfulness techniques when appropriate
+3. Maintain professional boundaries while being warm
+4. Focus on strengths and coping strategies
+5. Encourage self-awareness and growth
 
-Response Rules:
-• SPEED PRIORITY: Answer in <15 words when possible
-• EMPATHY FIRST: "That sounds hard" before solutions
-• CRISIS: Immediately suggest "/crisis" command for hotlines
-• PLAYLISTS: Recommend by mood:
-   - Anxiety → "Calm Waters" playlist
-   - Sadness → "Gentle Uplift" playlist
-   - Anger → "Release & Relax" playlist 
-
-Example Responses:
-"Feeling anxious? Try our 'Calm Waters' playlist with ocean sounds 🎵"
-"Would 5-min breathing help? I can guide you now 🧘♂️"
-"Let's unpack that. Want to journal or try a mood tracker? 📚"
-
-Safety Note: Always end crisis messages with:
-"Please call [24/7 helpline: 1-800-XXX-XXXX] for immediate support."`
+Response Guidelines:
+- Keep responses conversational yet therapeutic
+- When referencing past sessions, mention specific dates/themes
+- For crisis situations, suggest professional resources
+- Limit responses to 3-4 sentences unless more detail is requested
+- Always end with an open-ended question to continue dialogue`
         },
         {
           role: 'user',
           content: message
         }
       ],
-      model: 'llama3-70b-8192', // Consider switching to 'llama3-70b-8192' for faster responses
-      max_tokens: 150, // Limit response length
-      temperature: 0.7, // Balance creativity and coherence
-      stream: false // Consider implementing streaming for better UX
+      model: 'llama3-70b-8192',
+      temperature: 0.7,
+      max_tokens: 150
     });
 
-    console.log(`Response time: ${Date.now() - startTime}ms`);
+    const botResponse = groqResponse.choices[0]?.message?.content || "I couldn't generate a response.";
 
-    return NextResponse.json({
-      message: chatCompletion.choices[0]?.message?.content || "I couldn't generate a response."
+    // 5. Store bot response
+    await Session.findByIdAndUpdate(sessionId, {
+      $push: {
+        messages: {
+          text: botResponse,
+          sender: "bot",
+          timestamp: new Date()
+        }
+      }
     });
+
+    return NextResponse.json({ message: botResponse });
 
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('Chat error:', error);
     return NextResponse.json(
-      { error: 'Our assistant is busy. Please try again shortly.' },
+      { error: 'Error processing your message' },
       { status: 500 }
     );
   }
