@@ -102,14 +102,11 @@ const Footer = () => {
         <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} MindfulAI. All rights reserved.</p>
           <div className="mt-2 flex justify-center space-x-4">
-            <Link href="#" className="hover:text-foreground">
+            <Link href="/privacy-policy" className="hover:text-foreground">
               Privacy Policy
             </Link>
             <Link href="#" className="hover:text-foreground">
               Terms of Service
-            </Link>
-            <Link href="#" className="hover:text-foreground">
-              Cookie Policy
             </Link>
           </div>
         </div>

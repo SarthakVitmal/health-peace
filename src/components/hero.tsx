@@ -18,7 +18,6 @@ const Hero = () => {
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
               <Button size="lg" className="px-8">Get Started</Button>
-              <Button size="lg" variant="outline">Learn More</Button>
             </div>
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center">

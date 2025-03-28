@@ -62,6 +62,8 @@ export const config = {
         '/verifyemail', 
         '/dashboard/:path*', 
         '/forgotpassword', 
-        '/resetpassword'
+        '/resetpassword',
+        '/terms',
+        '/privacy-policy',
     ],
 };
