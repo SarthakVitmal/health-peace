@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   AlertOctagon,
@@ -52,6 +52,31 @@ import { useSession } from "next-auth/react";
 import Loader from "@/components/loader";
 import { toast, Toaster } from "sonner";
 
+interface Mood {
+  date: string;
+  mood: string;
+}
+
+interface DailyQuote {
+  q: string;
+  a: string;
+}
+
+interface Resource {
+  title: string;
+  type: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  href: string;
+}
+
+interface QuickAction {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  color: string;
+  variant?: "destructive";
+}
 
 export default function MentalEaseDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -73,65 +98,80 @@ export default function MentalEaseDashboard() {
   const router = useRouter();
   const { data: session } = useSession();
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch("/api/auth/user");
-        const data = await response.json();
-
-        if (response.ok) {
-          setFirstName(data.user.firstName);
-          setUserId(data.user._id);
-          checkMoodStatus(data.user._id);
-        } else {
-          if (session) {
-            toast.error("Failed to fetch user data");
-          } else {
-            toast.error("Session expired. Please login again.");
-          }
-          router.push("/login");
+    // Memoized User Data Fetching
+  const fetchUserData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/user", {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        toast.error("Session expired. Please login again.");
-        router.push("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      const data = await response.json();
 
-    fetchUserData();
+      if (response.ok) {
+        setFirstName(data.user.firstName);
+        setUserId(data.user._id);
+        await checkMoodStatus(data.user._id);
+      } else {
+        handleAuthError();
+      }
+    } catch (error) {
+      handleAuthError();
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
 
-  useEffect(() => {
-    const fetchMoodData = async () => {
-      try {
-        const month = format(selectedMonth, "yyyy-MM");
-        const response = await fetch(`/api/mood?userId=${userId}&month=${month}`);
-        const data = await response.json();
+  // Memoized Mood Data Fetching
+  const fetchMoodData = useCallback(async () => {
+    if (!userId) return;
 
-        if (response.ok) {
-          const formattedData = data.moods.reduce((acc: Record<string, string>, mood: any) => {
-            const date = format(new Date(mood.date), "yyyy-MM-dd");
-            acc[date] = mood.mood;
-            return acc;
-          }, {});
-          setMoodData(formattedData);
-        } else {
-          setError(data.error || "Failed to fetch mood data");
+    try {
+      const month = format(selectedMonth, "yyyy-MM");
+      const response = await fetch(`/api/mood?userId=${userId}&month=${month}`, {
+        headers: {
+          'Cache-Control': 'max-age=3600'
         }
-      } catch (error) {
-        setError("Error fetching mood data");
-      } finally {
-        setLoadingMoodData(false);
-      }
-    };
+      });
+      const data = await response.json();
 
-    if (userId) {
-      fetchMoodData();
+      if (response.ok) {
+        const formattedData = data.moods.reduce((acc: Record<string, string>, mood: Mood) => {
+          const date = format(new Date(mood.date), "yyyy-MM-dd");
+          acc[date] = mood.mood;
+          return acc;
+        }, {});
+        setMoodData(formattedData);
+      } else {
+        setError(data.error || "Failed to fetch mood data");
+      }
+    } catch (error) {
+      setError("Error fetching mood data");
+    } finally {
+      setLoadingMoodData(false);
     }
   }, [userId, selectedMonth]);
 
+  // Memoized Mood Summary
+  const moodSummary = useMemo(() => {
+    return Object.values(moodData).reduce(
+      (acc: { [key: string]: number }, mood) => {
+        acc[mood] = (acc[mood] || 0) + 1;
+        return acc;
+      },
+      { happy: 0, neutral: 0, sad: 0 }
+    );
+  }, [moodData]);
+
+  // Memoized Total Moods
+  const totalMoods = useMemo(() => 
+    Object.values(moodSummary).reduce((sum, count) => sum + count, 0),
+    [moodSummary]
+  );
+
+  // Check Mood Status
   const checkMoodStatus = async (userId: string) => {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
@@ -140,23 +180,18 @@ export default function MentalEaseDashboard() {
         throw new Error("User ID is missing");
       }
 
-      // Check if mood was already recorded today
       const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
       const data = await response.json();
 
-      if (response.ok) {
-        if (!data.mood) {
-          setIsMoodModalOpen(true);
-        }
-      } else {
-        throw new Error(`Failed to check mood status: ${data.error}`);
+      if (response.ok && !data.mood) {
+        setIsMoodModalOpen(true);
       }
     } catch (error) {
       console.error("Error checking mood status:", error);
     }
   };
 
-
+  // Mood Selection Handler
   const handleMoodSelection = async (mood: string) => {
     setSelectedMood(mood);
     setIsMoodModalOpen(false);
@@ -171,7 +206,6 @@ export default function MentalEaseDashboard() {
         mood,
         date: format(new Date(), "yyyy-MM-dd"),
       };
-      console.log("Sending payload:", payload);
 
       const response = await fetch("/api/mood", {
         method: "POST",
@@ -183,52 +217,44 @@ export default function MentalEaseDashboard() {
         throw new Error("Failed to save mood");
       }
 
-      const data = await response.json();
-      console.log("Mood saved successfully:", data);
+      toast.success("Mood recorded successfully!");
     } catch (error) {
       console.error("Error saving mood:", error);
+      toast.error("Failed to record mood");
     }
   };
 
-  const moodSummary = Object.values(moodData).reduce(
-    (acc: { [key: string]: number }, mood) => {
-      acc[mood] = (acc[mood] || 0) + 1;
-      return acc;
-    },
-    { happy: 0, sad: 0, depressed: 0 }
-  );
-
-  const totalMoods = Object.values(moodSummary).reduce((sum, count) => sum + count, 0);
-
-
-  const calculatePercentage = (value: number) => {
+  // Percentage Calculation
+  const calculatePercentage = useCallback((value: number) => {
     return Math.round((value / totalMoods) * 100);
-  };
+  }, [totalMoods]);
 
-  const getMoodColor = (date: Date | undefined) => {
-    if (!date) return "";
-
-    const dateString = format(date, "yyyy-MM-dd");
-    const mood = moodData[dateString];
-
-    if (mood === "happy") return "bg-green-500";
-    if (mood === "sad") return "bg-blue-500";
-    if (mood === "depressed") return "bg-red-500";
-
-    return "";
-  };
-
-  const fetchDailyQuote = async () => {
+  // Quote Fetching with Local Storage Caching
+  const fetchDailyQuote = useCallback(async () => {
     setQuoteLoading(true);
     try {
+      const cachedQuote = localStorage.getItem('dailyQuote');
+      const cachedTimestamp = localStorage.getItem('dailyQuoteTimestamp');
+
+      if (cachedQuote && cachedTimestamp) {
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        if (parseInt(cachedTimestamp) > oneDayAgo) {
+          setDailyQuote(JSON.parse(cachedQuote));
+          setQuoteLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch('/api/quotes');
       const result = await response.json();
+      
+      localStorage.setItem('dailyQuote', JSON.stringify(result));
+      localStorage.setItem('dailyQuoteTimestamp', Date.now().toString());
+      
       setDailyQuote(result);
     } catch (error) {
       console.error('Error:', error);
-      // Fallback quotes
-      // Fallback quotes
-      const fallbackQuotes = [
+      const fallbackQuotes: DailyQuote[] = [
         {
           q: "You are braver than you believe, stronger than you seem, and smarter than you think.",
           a: "A.A. Milne"
@@ -238,16 +264,37 @@ export default function MentalEaseDashboard() {
           a: "Noam Shpancer"
         }
       ];
-      setDailyQuote(fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)]);
+      const fallbackQuote = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+      setDailyQuote(fallbackQuote);
     } finally {
       setQuoteLoading(false);
     }
-  };
+  }, []);
+
+  // Authentication Error Handler
+  const handleAuthError = useCallback(() => {
+    if (session) {
+      toast.error("Failed to fetch user data");
+    } else {
+      toast.error("Session expired. Please login again.");
+    }
+    router.push("/login");
+  }, [session, router]);
+
+  // Lifecycle Effects
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+
+  useEffect(() => {
+    fetchMoodData();
+  }, [fetchMoodData]);
 
   useEffect(() => {
     fetchDailyQuote();
-  }, []);
+  }, [fetchDailyQuote]);
 
+  // Early Return for Loading States
   if (loading || loadingMoodData) {
     return <Loader />;
   }
@@ -256,8 +303,8 @@ export default function MentalEaseDashboard() {
     return <div>Error: {error}</div>;
   }
 
-  // Sample resources
-  const resources = [
+  // Static Data with TypeScript
+  const resources: Resource[] = [
     {
       title: "Understanding Anxiety",
       type: "Article",
@@ -281,8 +328,7 @@ export default function MentalEaseDashboard() {
     },
   ];
 
-  // Quick actions
-  const actions = [
+  const actions: QuickAction[] = [
     {
       title: "Chat with AI",
       icon: MessageSquare,
@@ -312,43 +358,19 @@ export default function MentalEaseDashboard() {
       icon: AlertOctagon,
       href: "/dashboard/emergency-assistance",
       color: "text-red-600",
-      variant: "destructive" as const,
+      variant: "destructive",
     },
   ];
 
-  // Sidebar menu items
   const menuItems = [
-    {
-      title: "Dashboard",
-      icon: Home,
-      href: "/",
-    },
-    {
-      title: "Chat with AI",
-      icon: MessageSquare,
-      href: "/dashboard/chat",
-    },
-    {
-      title: "Resources",
-      icon: HeartPulse,
-      href: "/dashboard/resources",
-    },
-    {
-      title: "Playlists",
-      icon: Music,
-      href: "dashboard/playlist",
-    },
-    {
-      title: "Feedback",
-      icon: ThumbsUp,
-      href: "/dashboard/feedback",
-    },
-    {
-      title: "Settings",
-      icon: Settings,
-      href: "dashboard/settings",
-    },
+    { title: "Dashboard", icon: Home, href: "/" },
+    { title: "Chat with AI", icon: MessageSquare, href: "/dashboard/chat" },
+    { title: "Resources", icon: HeartPulse, href: "/dashboard/resources" },
+    { title: "Playlists", icon: Music, href: "dashboard/playlist" },
+    { title: "Feedback", icon: ThumbsUp, href: "/dashboard/feedback" },
+    { title: "Settings", icon: Settings, href: "dashboard/settings" },
   ];
+ 
 
   return (
     <SidebarProvider>
