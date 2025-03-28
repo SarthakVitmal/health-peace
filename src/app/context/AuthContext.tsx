@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     setIsLoggedIn(false);
     localStorage.removeItem("isLoggedIn");
-    router.push("/");
+    router.replace("/"); // Use router.replace to navigate automatically without requiring a refresh
   };
 
   if (isLoggedIn === null) {
