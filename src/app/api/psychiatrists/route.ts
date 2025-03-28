@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Psychiatrists from "@/models/Psychiatrists"; 
-
-const MONGO_URI = process.env.MONGO_URI || "your_mongodb_connection_string";
-
-mongoose.connect(MONGO_URI);
+import { connectToDatabase } from "@/app/lib/db";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const location = searchParams.get("location");
-
+  await connectToDatabase();
   if (!location) {
     return NextResponse.json({ error: "Location is required" }, { status: 400 });
   }
