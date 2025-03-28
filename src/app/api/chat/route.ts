@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     // 2. Get session history if user asks about past conversations
     let historyContext = '';
     if (message.toLowerCase().includes('what did we talk') ||
-      message.toLowerCase().includes('previous session')) {
+      message.toLowerCase().includes('previous session') || message.toLowerCase().includes('What was our last session about') ||
+      message.toLowerCase().includes('previous conversations') || message.toLowerCase().includes('past conversations') || message.toLowerCase().includes('past session') || message.toLowerCase().includes('What was our last session about')) {
 
       const pastSessions = await Session.find({
         userId,
