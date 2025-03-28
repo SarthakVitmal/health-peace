@@ -8,50 +8,26 @@ export async function middleware(request: NextRequest) {
     const isPrivatePath = path.startsWith('/dashboard');
     const isAuthPath = ['/', '/login', '/signup', '/verifyemail'].includes(path);
 
-    try {
-        // Get the session token using next-auth/jwt
-        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    // Get the session token using next-auth/jwt
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
-        // Check for the custom token (for normal login)
-        const customToken = request.cookies.get('token')?.value;
+    // Check for the custom token (for normal login)
+    const customToken = request.cookies.get('token')?.value;
 
-        // Determine if the user is authenticated
-        const isAuthenticated = !!token || !!customToken;
+    // Determine if the user is authenticated
+    const isAuthenticated = !!token || !!customToken;
 
-        // Handle server restart case - check for auth cookies first
-        const hasAuthCookies = request.cookies.get('next-auth.session-token') || 
-                              request.cookies.get('__Secure-next-auth.session-token') || 
-                              customToken;
-
-        // Redirect unauthenticated users from private pages
-        if (isPrivatePath && !isAuthenticated) {
-            // If they have auth cookies but token verification failed (server restart case)
-            if (hasAuthCookies) {
-                // Force a logout by clearing cookies
-                const response = NextResponse.redirect(new URL('/login', request.url));
-                response.cookies.delete('next-auth.session-token');
-                response.cookies.delete('__Secure-next-auth.session-token');
-                response.cookies.delete('token');
-                return response;
-            }
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-
-        // Redirect logged-in users away from authentication pages
-        if (isAuthPath && (isAuthenticated || hasAuthCookies)) {
-            return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
-
-        return NextResponse.next();
-    } catch (error) {
-        console.error('Middleware error:', error);
-        // In case of error, proceed with the request but clear potentially invalid tokens
-        const response = NextResponse.next();
-        response.cookies.delete('next-auth.session-token');
-        response.cookies.delete('__Secure-next-auth.session-token');
-        response.cookies.delete('token');
-        return response;
+    // Redirect unauthenticated users from private pages
+    if (isPrivatePath && !isAuthenticated) {
+        return NextResponse.redirect(new URL('/login', request.url));
     }
+
+    // Redirect logged-in users away from authentication pages
+    if (isAuthPath && isAuthenticated) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    return NextResponse.next();
 }
 
 export const config = {
@@ -67,3 +43,4 @@ export const config = {
         '/privacy-policy',
     ],
 };
+

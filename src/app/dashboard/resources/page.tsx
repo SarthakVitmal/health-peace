@@ -83,11 +83,10 @@ const Resources = () => {
   }
 
   const fetchVideos = async (query: string) => {
-    const API_KEY = "AIzaSyDvwMUD6rsuvxSmIeBqLlIGBl5DX0HyahE"
     const mentalHealthQuery = `${query} mental health wellness`
 
     const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(mentalHealthQuery)}&key=${API_KEY}&type=video&maxResults=10`,
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(mentalHealthQuery)}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}&type=video&maxResults=10`,
     )
 
     if (!response.ok) {
@@ -99,11 +98,10 @@ const Resources = () => {
   }
 
   const fetchArticles = async (query: string) => {
-    const API_KEY = "c2296f38dc9141128b50925bca85218a"
     const mentalHealthQuery = `${query} mental health wellness`
 
     const response = await fetch(
-      `https://newsapi.org/v2/everything?q=${encodeURIComponent(mentalHealthQuery)}&sortBy=publishedAt&apiKey=${API_KEY}&pageSize=10`,
+      `https://newsapi.org/v2/everything?q=${encodeURIComponent(mentalHealthQuery)}&sortBy=publishedAt&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}&pageSize=10`,
     )
 
     if (!response.ok) {

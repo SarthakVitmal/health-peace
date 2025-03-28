@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import Psychiatrists from "@/models/Psychiatrists"; // Ensure correct import
+import Psychiatrists from "@/models/Psychiatrists"; 
 
 const MONGO_URI = process.env.MONGO_URI || "your_mongodb_connection_string";
 
