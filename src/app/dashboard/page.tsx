@@ -265,21 +265,21 @@ export default function MentalEaseDashboard() {
       type: "Article",
       icon: FileText,
       description: "Learn about the causes and symptoms of anxiety disorders.",
-      href: "/resources/anxiety",
+      href: "/dashboard/resources",
     },
     {
       title: "Mindfulness Meditation",
       type: "Video",
       icon: Video,
       description: "A 10-minute guided meditation for stress relief.",
-      href: "/resources/meditation",
+      href: "/dashboard/resources",
     },
     {
       title: "Cognitive Behavioral Therapy",
       type: "Guide",
       icon: BookOpen,
       description: "An introduction to CBT techniques for managing negative thoughts.",
-      href: "/resources/cbt",
+      href: "/dashboard/resources",
     },
   ];
 

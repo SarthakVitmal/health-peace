@@ -2,7 +2,6 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { ChevronLeft, Send, Loader2, Bot, X, Plus, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
@@ -317,9 +316,14 @@ const MindeaseChatbot: React.FC = () => {
       {/* Header */}
       <header className="top-15 z-10 bg-white shadow-sm border-b p-4 flex items-center justify-between sticky w-full">
         <div className="flex items-center">
-          <Link href="/dashboard" className="mr-4 hover:bg-neutral-100 p-2 rounded-full transition">
+          <Button 
+            onClick={confirmEndSession} 
+            variant="ghost" 
+            className="mr-4 p-2 rounded-full transition hover:bg-neutral-100"
+            aria-label="Go back and end session"
+          >
             <ChevronLeft className="size-5 text-neutral-700" />
-          </Link>
+          </Button>
           <div className="flex items-center">
             <div className="p-2 bg-purple-50 rounded-full mr-3">
               <Bot className="size-5 text-purple-600" />
