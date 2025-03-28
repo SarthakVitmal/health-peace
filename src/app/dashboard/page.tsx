@@ -66,6 +66,11 @@ export default function MentalEaseDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [loadingMoodData, setLoadingMoodData] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dailyQuote, setDailyQuote] = useState<{
+    q: string;
+    a: string;
+  } | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(true);
 
   const router = useRouter();
   const { data: session } = useSession();
@@ -142,7 +147,6 @@ export default function MentalEaseDashboard() {
       const data = await response.json();
 
       if (response.ok) {
-        // If no mood was found for today, open the modal
         if (!data.mood) {
           setIsMoodModalOpen(true);
         }
@@ -215,6 +219,36 @@ export default function MentalEaseDashboard() {
 
     return "";
   };
+
+  const fetchDailyQuote = async () => {
+    setQuoteLoading(true);
+    try {
+      const response = await fetch('/api/quotes');
+      const result = await response.json();
+      setDailyQuote(result);
+    } catch (error) {
+      console.error('Error:', error);
+      // Fallback quotes
+      // Fallback quotes
+      const fallbackQuotes = [
+        {
+          q: "You are braver than you believe, stronger than you seem, and smarter than you think.",
+          a: "A.A. Milne"
+        },
+        {
+          q: "Mental health is not a destination, but a process.",
+          a: "Noam Shpancer"
+        }
+      ];
+      setDailyQuote(fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)]);
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDailyQuote();
+  }, []);
 
   if (loading || loadingMoodData) {
     return <Loader />;
@@ -412,6 +446,42 @@ export default function MentalEaseDashboard() {
                       </Link>
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Daily Motivation */}
+              <Card className="bg-white shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Daily Motivation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {quoteLoading ? (
+                    <div className="animate-pulse rounded-lg bg-gray-100 p-6">
+                      <div className="h-6 w-3/4 rounded bg-gray-200"></div>
+                      <div className="mt-4 h-6 w-1/2 rounded bg-gray-200"></div>
+                    </div>
+                  ) : dailyQuote ? (
+                    <div className="rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-6">
+                      <blockquote className="text-lg italic text-gray-800">
+                        "{dailyQuote.q}"
+                      </blockquote>
+                      <p className="mt-4 text-right font-medium text-gray-600">
+                        — {dailyQuote.a}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-gray-100 p-6 text-center text-gray-600">
+                      Couldn't load quote. Please try again.
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full"
+                    onClick={fetchDailyQuote}
+                    disabled={quoteLoading}
+                  >
+                    {quoteLoading ? "Loading..." : "Get New Inspiration"}
+                  </Button>
                 </CardContent>
               </Card>
 
