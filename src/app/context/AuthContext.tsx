@@ -28,24 +28,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.setItem("isLoggedIn", "true");
   };
 
-  const logout = () => {
-    // Clear the cookie with the same path, domain, and security settings it was created with
-    const cookieOptions = [
-      "token=",
-      "path=/",
-      "expires=Thu, 01 Jan 1970 00:00:00 UTC",
-      "max-age=0" // Additional expiration control
-    ];
-    
-    // Add these if your cookie was created with them
-    // "secure", 
-    // "sameSite=strict",
-    
-    document.cookie = cookieOptions.join("; ");
-    
-    setIsLoggedIn(false);
-    localStorage.removeItem("isLoggedIn");
-    router.replace("/");
+  const logout = async () => {
+    try {
+      // Call the logout API to clear httpOnly cookies
+      await fetch('/api/auth/logout');
+      
+      // Clear local state and localStorage
+      setIsLoggedIn(false);
+      localStorage.removeItem("isLoggedIn");
+      
+      // If using NextAuth, you should also sign out from NextAuth
+      // This might require importing signOut from next-auth/react
+      // and calling signOut()
+      
+      router.replace("/");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   if (isLoggedIn === null) {
