@@ -496,14 +496,6 @@ export default function MentalEaseDashboard() {
                       Couldn't load quote. Please try again.
                     </div>
                   )}
-                  <Button
-                    variant="outline"
-                    className="mt-4 w-full"
-                    onClick={fetchDailyQuote}
-                    disabled={quoteLoading}
-                  >
-                    {quoteLoading ? "Loading..." : "Get New Inspiration"}
-                  </Button>
                 </CardContent>
               </Card>
 
