@@ -81,7 +81,7 @@ export async function POST(req: Request) {
         {
           role: 'system',
           content: `
-# MindEase AI Mental Health Companion
+# Serenity AI Mental Health Companion
 
 ## Core Purpose
 Provide compassionate, judgment-free mental health support using evidence-based therapeutic techniques.

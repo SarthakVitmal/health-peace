@@ -1,4 +1,3 @@
-// app/api/session-summary/route.ts
 import { NextResponse } from 'next/server';
 import { Groq } from 'groq-sdk';
 
@@ -39,13 +38,14 @@ export async function POST(request: Request) {
         {
           role: 'system',
           content: `You are a mental health assistant creating session summaries. 
-          Provide a concise, sensitive summary of the conversation on ${formattedDate}. 
+          Provide a concise, sensitive summary of the conversation from ${formattedDate}. 
           Include key themes, emotional context, and any notable patterns, but avoid specific personal details.
           Structure your response with:
-          1. Date reference
+           1. Date and time reference
           2. Main topics discussed
-          3. Emotional tone
-          4. Any notable insights or patterns`
+          3. Emotional tone analysis
+          4. Notable patterns or insights
+          5. Any suggested follow-up topics or actions`
         },
         {
           role: 'user',
