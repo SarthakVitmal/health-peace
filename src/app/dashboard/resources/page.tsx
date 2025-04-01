@@ -98,19 +98,30 @@ const Resources = () => {
   }
 
   const fetchArticles = async (query: string) => {
-    const mentalHealthQuery = `${query} mental health wellness`
-
-    const response = await fetch(
-      `https://newsapi.org/v2/everything?q=${encodeURIComponent(mentalHealthQuery)}&sortBy=publishedAt&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}&pageSize=10`,
-    )
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch articles")
+    const mentalHealthQuery = `${query} mental health wellness`;
+  
+    try {
+      const response = await fetch(
+        `/api/news-api?query=${encodeURIComponent(mentalHealthQuery)}`
+      );
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      
+      // Handle NewsAPI errors
+      if (data.status === "error") {
+        throw new Error(data.message || "NewsAPI error");
+      }
+  
+      setResults(data.articles || []);
+    } catch (err) {
+      console.error('Fetch articles error:', err);
+      throw new Error("Failed to fetch articles. Please try again later.");
     }
-
-    const data = await response.json()
-    setResults(data.articles || [])
-  }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
