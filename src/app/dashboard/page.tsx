@@ -98,7 +98,7 @@ export default function MentalEaseDashboard() {
   const router = useRouter();
   const { data: session } = useSession();
 
-    // Memoized User Data Fetching
+  // Memoized User Data Fetching
   const fetchUserData = useCallback(async () => {
     try {
       const response = await fetch("/api/auth/user", {
@@ -166,7 +166,7 @@ export default function MentalEaseDashboard() {
   }, [moodData]);
 
   // Memoized Total Moods
-  const totalMoods = useMemo(() => 
+  const totalMoods = useMemo(() =>
     Object.values(moodSummary).reduce((sum, count) => sum + count, 0),
     [moodSummary]
   );
@@ -203,8 +203,8 @@ export default function MentalEaseDashboard() {
 
       const payload = {
         userId,
-        mood,
-        date: format(new Date(), "yyyy-MM-dd"),
+        mood
+        // Remove the date parameter - let server handle it
       };
 
       const response = await fetch("/api/mood", {
@@ -217,6 +217,8 @@ export default function MentalEaseDashboard() {
         throw new Error("Failed to save mood");
       }
 
+      // Refresh mood data after successful save
+      await fetchMoodData();
       toast.success("Mood recorded successfully!");
     } catch (error) {
       console.error("Error saving mood:", error);
@@ -247,10 +249,10 @@ export default function MentalEaseDashboard() {
 
       const response = await fetch('/api/quotes');
       const result = await response.json();
-      
+
       localStorage.setItem('dailyQuote', JSON.stringify(result));
       localStorage.setItem('dailyQuoteTimestamp', Date.now().toString());
-      
+
       setDailyQuote(result);
     } catch (error) {
       console.error('Error:', error);
@@ -370,7 +372,7 @@ export default function MentalEaseDashboard() {
     { title: "Feedback", icon: ThumbsUp, href: "/dashboard/feedback" },
     { title: "Settings", icon: Settings, href: "dashboard/settings" },
   ];
- 
+
 
   return (
     <SidebarProvider>
@@ -536,29 +538,38 @@ export default function MentalEaseDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {["happy", "neutral", "sad"].map((mood) => (
+                    {["happy", "neutral", "sad"].map((mood: keyof typeof moodSummary) => {
+                      // Get the count for this mood (default to 0 if undefined)
+                      const moodCount: number = moodSummary[mood] || 0;
+                      // Calculate total moods (sum of all mood counts)
+                      const totalMoods: number = Object.values(moodSummary).reduce((sum: number, count: number) => sum + (count || 0), 0);
+                      // Calculate percentage (0 if no moods recorded)
+                      const percentage: number = totalMoods > 0 ? Math.round((moodCount / totalMoods) * 100) : 0;
+
+                      return (
                       <div key={mood} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600 capitalize">{mood}</span>
-                          <span className="font-medium text-gray-900">
-                            {calculatePercentage(moodSummary[mood as keyof typeof moodSummary])}%
-                          </span>
+                        <span className="text-gray-600 capitalize">{mood}</span>
+                        <span className="font-medium text-gray-900">
+                          {percentage}%
+                        </span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-gray-200">
-                          <div
-                            className={cn(
-                              "h-2 rounded-full",
-                              mood === "happy" && "bg-green-500",
-                              mood === "neutral" && "bg-blue-500",
-                              mood === "sad" && "bg-red-500",
-                            )}
-                            style={{
-                              width: `${calculatePercentage(moodSummary[mood as keyof typeof moodSummary])}%`,
-                            }}
-                          />
+                        <div
+                          className={cn(
+                          "h-2 rounded-full",
+                          mood === "happy" && "bg-green-500",
+                          mood === "neutral" && "bg-blue-500",
+                          mood === "sad" && "bg-red-500",
+                          )}
+                          style={{
+                          width: `${percentage}%`,
+                          }}
+                        />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -614,7 +625,19 @@ export default function MentalEaseDashboard() {
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: 31 }, (_, i) => {
                       const day = i + 1;
-                      const currentDate = new Date(2025, 2, day); // March 2025
+                      // Use UTC date for consistency
+                      const currentDate = new Date(Date.UTC(
+                        selectedMonth.getUTCFullYear(),
+                        selectedMonth.getUTCMonth(),
+                        day,
+                        0, 0, 0, 0
+                      ));
+
+                      // Skip days that don't exist in this month
+                      if (currentDate.getUTCMonth() !== selectedMonth.getUTCMonth()) {
+                        return <div key={day} className="h-10 w-10" />;
+                      }
+
                       const dateString = format(currentDate, "yyyy-MM-dd");
                       const mood = moodData[dateString];
 

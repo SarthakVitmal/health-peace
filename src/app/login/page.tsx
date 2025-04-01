@@ -9,6 +9,7 @@ import { AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useAuth } from "@/app/context/AuthContext";
 
 
 const LoginPage = () => {
@@ -17,6 +18,7 @@ const LoginPage = () => {
     const [error, setError] = React.useState('');
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const router = useRouter()
+    const { login } = useAuth();
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
@@ -43,11 +45,15 @@ const LoginPage = () => {
                 return toast.error(data.error || "Login failed");
             }
 
-            localStorage.setItem("isLoggedIn", "true"); 
-            localStorage.setItem("token", data.token); 
-            window.location.reload();
-            toast.success("Login Successful")  
-            await delay(3000);
+            // Update auth state through context
+            login();
+            
+            if (data.token) {
+                localStorage.setItem("token", data.token);
+            }
+
+            toast.success("Login Successful");
+            await delay(1000);
             router.push('/dashboard');
         } catch (error) {
             toast.error("An unexpected error happened")

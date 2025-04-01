@@ -1,12 +1,12 @@
 "use client"
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { ChevronLeft, Send, Loader2, Bot, X, Plus, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -29,18 +29,22 @@ const MindeaseChatbot: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isTyping, setIsTyping] = useState<boolean>(false)
   const [isListening, setIsListening] = useState<boolean>(false)
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false)
-  const [speechSupported, setSpeechSupported] = useState<boolean>(false)
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(true)
+  const [speechSupported, setSpeechSupported] = useState<boolean>(true)
   const [showEndSessionModal, setShowEndSessionModal] = useState<boolean>(false)
   const [isEndingSession, setIsEndingSession] = useState<boolean>(false)
+  const [isRecording, setIsRecording] = useState<boolean>(false)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const recognitionRef = useRef<any>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showExitWarning, setShowExitWarning] = useState<boolean>(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -75,78 +79,119 @@ const MindeaseChatbot: React.FC = () => {
 
   // Check for speech synthesis support
   useEffect(() => {
-    setSpeechSupported(
-      typeof window !== "undefined" &&
-        ("SpeechRecognition" in window || 
-         "webkitSpeechRecognition" in window) &&
-        "speechSynthesis" in window
-    )
-    
-    // Initialize speech recognition
-    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      // @ts-ignore
-      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
-      recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.continuous = true
-      recognitionRef.current.interimResults = true
-      recognitionRef.current.lang = "en-US"
+    // Check for speech synthesis support
+    const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window
 
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
-          .map((result: any) => result.transcript)
-          .join("")
-        setInputMessage(transcript)
-        handleInputResize()
-      }
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error)
-        setIsListening(false)
-        toast.error("Voice input error: " + event.error)
-      }
-
-      recognitionRef.current.onend = () => {
-        if (isListening) {
-          recognitionRef.current?.start()
-        }
-      }
+    if (!hasSpeechSynthesis) {
+      // If speech synthesis is not supported, we'll still allow Whisper for input
+      // but disable the output option
+      toast.warning("Voice output is not supported in your browser")
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-      }
       if (speechSynthesisRef.current) {
         window.speechSynthesis.cancel()
       }
+      stopRecording()
     }
-  }, [isListening])
+  }, [])
 
-  const toggleListening = () => {
-    if (!speechSupported) {
-      toast.warning("Voice input is not supported in your browser")
-      return
-    }
+  // Setup and handle microphone recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
 
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      toast.info("Voice input stopped")
-    } else {
-      try {
-        recognitionRef.current?.start()
-        setIsListening(true)
-        toast.info("Listening... Speak now")
-      } catch (error) {
-        console.error("Error starting speech recognition:", error)
-        toast.error("Failed to start voice input")
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
       }
+
+      mediaRecorder.onstop = processAudio
+      mediaRecorder.start()
+      setIsRecording(true)
+      toast.info("Speak now...")
+    } catch (error) {
+      toast.error("Microphone access denied")
+      setIsListening(false)
     }
   }
 
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop()
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
+      setIsRecording(false)
+    }
+  }
+
+  const processAudio = async () => {
+    if (!audioChunksRef.current.length) {
+      toast.warning("No audio recorded")
+      return
+    }
+
+    try {
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+      const formData = new FormData()
+      formData.append('file', audioBlob, 'recording.webm')
+
+      toast.loading("Processing speech...")
+      const response = await fetch('/api/whisper', { method: 'POST', body: formData })
+      const { text } = await response.json()
+
+      if (text) {
+        setInputMessage(text)
+        toast.success("Voice message ready")
+      } else {
+        toast.warning("No speech detected")
+      }
+    } catch (error) {
+      toast.error("Failed to process speech")
+    } finally {
+      audioChunksRef.current = []
+      setIsListening(false)
+    }
+  }
+
+  const toggleListening = () => {
+    if (isListening) stopRecording()
+    else {
+      setIsListening(true)
+      startRecording()
+    }
+  }
+
+  const handleBeforeUnload = useCallback((e: BeforeUnloadEvent) => {
+    if (sessionId) { // Only show warning if session is active
+      e.preventDefault()
+      e.returnValue = 'You have an active chat session. Are you sure you want to leave?'
+      return e.returnValue
+    }
+  }, [sessionId])
+
+  // Setup event listeners for page navigation
+  useEffect(() => {
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [handleBeforeUnload])
+
+  // Handle router navigation (Next.js)
+  useEffect(() => {
+    // This effect runs whenever the pathname changes
+    if (sessionId && !pathname.includes('/chat') && !showEndSessionModal) {
+      setShowExitWarning(true);
+      // Note: You can't directly throw to abort navigation in App Router
+    }
+  }, [pathname, sessionId, showEndSessionModal]);
+
   const toggleSpeechOutput = () => {
-    if (!speechSupported) {
+    if (!('speechSynthesis' in window)) {
       toast.warning("Voice output is not supported in your browser")
       return
     }
@@ -167,18 +212,18 @@ const MindeaseChatbot: React.FC = () => {
   }
 
   const speakMessage = (text: string) => {
-    if (!isSpeaking || !speechSupported) return
-    
+    if (!isSpeaking || !('speechSynthesis' in window)) return
+
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 1
     utterance.pitch = 1
     utterance.volume = 1
-    
+
     utterance.onend = () => {
       speechSynthesisRef.current = null
     }
-    
+
     speechSynthesisRef.current = utterance
     window.speechSynthesis.speak(utterance)
   }
@@ -186,19 +231,19 @@ const MindeaseChatbot: React.FC = () => {
   // Initialize session on component mount
   useEffect(() => {
     const initializeSession = async () => {
-      if (!userId) return // Don't proceed if userId is not available
-      
+      if (!userId) return
+
       try {
         const response = await fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId }) 
+          body: JSON.stringify({ userId })
         })
-        
+
         if (!response.ok) {
           throw new Error('Failed to create session')
         }
-        
+
         const data = await response.json()
         setSessionId(data.sessionId)
       } catch (error) {
@@ -206,9 +251,9 @@ const MindeaseChatbot: React.FC = () => {
         toast.error("Failed to start chat session")
       }
     }
-    
+
     initializeSession()
-    
+
     return () => {
       if (sessionId) {
         endSession()
@@ -235,7 +280,7 @@ const MindeaseChatbot: React.FC = () => {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: inputMessage,
           sessionId,
           userId
@@ -253,7 +298,7 @@ const MindeaseChatbot: React.FC = () => {
       }
 
       setMessages((prev) => [...prev, botMessage])
-      
+
       // Speak the response if speech output is enabled
       if (isSpeaking) {
         speakMessage(data.message)
@@ -282,17 +327,17 @@ const MindeaseChatbot: React.FC = () => {
 
   const endSession = async () => {
     if (!sessionId) return
-    
+
     setIsEndingSession(true)
     try {
       const response = await fetch(`/api/sessions/${sessionId}/summary`, {
         method: "POST"
       })
-      
+
       if (!response.ok) {
         throw new Error("Failed to end session")
       }
-      
+
       toast.success("Session ended successfully")
       router.push("/dashboard")
     } catch (error) {
@@ -313,12 +358,44 @@ const MindeaseChatbot: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-neutral-50">
+      <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Active Session Detected</DialogTitle>
+            <DialogDescription>
+              You have an active chat session. Would you like to end the session properly
+              to save your progress before leaving?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowExitWarning(false)
+                router.push('/dashboard') 
+              }}
+            >
+              Leave Without Saving
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                setShowExitWarning(false)
+                setShowEndSessionModal(true)
+              }}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              End Session Properly
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Header */}
       <header className="top-15 z-10 bg-white shadow-sm border-b p-4 flex items-center justify-between sticky w-full">
         <div className="flex items-center">
-          <Button 
-            onClick={confirmEndSession} 
-            variant="ghost" 
+          <Button
+            onClick={confirmEndSession}
+            variant="ghost"
             className="mr-4 p-2 rounded-full transition hover:bg-neutral-100"
             aria-label="Go back and end session"
           >
@@ -329,14 +406,14 @@ const MindeaseChatbot: React.FC = () => {
               <Bot className="size-5 text-purple-600" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-neutral-800">MindEase</h1>
+              <h1 className="text-xl font-semibold text-neutral-800">SerenityBot</h1>
               <p className="text-xs text-neutral-500">{isTyping ? "Typing..." : "Online"}</p>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {speechSupported && (
-            <Button 
+          {('speechSynthesis' in window) && (
+            <Button
               onClick={toggleSpeechOutput}
               variant={isSpeaking ? "default" : "outline"}
               size="icon"
@@ -346,10 +423,10 @@ const MindeaseChatbot: React.FC = () => {
               {isSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </Button>
           )}
-          <Button 
-            onClick={confirmEndSession} 
-            variant="destructive" 
-            className="flex items-center gap-2" 
+          <Button
+            onClick={confirmEndSession}
+            variant="destructive"
+            className="flex items-center gap-2"
             size="sm"
           >
             <X size={16} />
@@ -365,16 +442,12 @@ const MindeaseChatbot: React.FC = () => {
             <div className="p-4 bg-purple-50 rounded-full mb-4">
               <Bot className="size-10 text-purple-600" />
             </div>
-            <h2 className="text-2xl font-bold text-neutral-800 mb-2">Welcome to MindEase</h2>
+            <h2 className="text-2xl font-semibold text-neutral-800 mb-2">Welcome to SerenityBot</h2>
             <p className="text-neutral-600 max-w-md">
               I'm here to support your mental wellbeing. Feel free to share what's on your mind or use the microphone to
               speak directly to me.
+              Please end the session when you're done.
             </p>
-            {!speechSupported && (
-              <p className="text-sm text-orange-600 mt-4">
-                Note: Voice features are not supported in your current browser. Try Chrome or Edge for full functionality.
-              </p>
-            )}
           </div>
         )}
 
@@ -382,16 +455,14 @@ const MindeaseChatbot: React.FC = () => {
           <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div className="flex max-w-[60%]">
               <Card
-                className={`p-2 h-fit border-0 shadow-sm${
-                  msg.sender === "user" 
-                    ? "bg-purple-200 text-black" 
-                    : "bg-white text-neutral-800"
-                }`}
+                className={`p-2 h-fit border-0 shadow-sm${msg.sender === "user"
+                  ? " bg-purple-300 text-black"
+                  : " bg-white text-neutral-800"
+                  }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
-                <p className={`text-xs mt-1 ${
-                  msg.sender === "user" ? "text-neutral-600" : "text-neutral-400"
-                }`}>
+                <p className={`text-xs mt-1 ${msg.sender === "user" ? "text-neutral-600" : "text-neutral-400"
+                  }`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </Card>
@@ -416,19 +487,15 @@ const MindeaseChatbot: React.FC = () => {
       <div className="sticky bottom-0 p-3 border-t bg-white shadow-md">
         <div className="flex items-end gap-2 w-full max-w-4xl mx-auto">
           {/* Voice input button */}
-          {/* {speechSupported && (
-            <Button
-              onClick={toggleListening}
-              variant={isListening ? "destructive" : "outline"}
-              size="icon"
-              className={`rounded-full flex-shrink-0 ${
-                isListening ? 'bg-red-500 hover:bg-red-600 text-white' : 'text-neutral-600'
+          <Button
+            onClick={toggleListening}
+            variant={isListening ? "destructive" : "outline"}
+            size="icon"
+            className={`rounded-lg h-[50px] w-[50px] flex items-center justify-center ${isListening ? 'bg-red-500 text-white' : 'text-neutral-600'
               }`}
-              aria-label={isListening ? "Stop listening" : "Start voice input"}
-            >
-              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </Button>
-          )} */}
+          >
+            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </Button>
 
           {/* Input container */}
           <div className="relative flex-grow flex items-end">
@@ -445,22 +512,20 @@ const MindeaseChatbot: React.FC = () => {
                   handleSendMessage()
                 }
               }}
-              placeholder={isListening ? "Listening... (speak now)" : "Type your message..."}
-              className="w-full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder={isListening ? "Recording... (speak now)" : "Type your message..."}
+              className="w- full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-stretch-condensed"
               rows={1}
             />
-
             {/* Send button */}
             <Button
               onClick={handleSendMessage}
               disabled={isLoading || !inputMessage.trim()}
               size="icon"
               variant="ghost"
-              className={`absolute right-2 bottom-2 p-1 rounded-full ${
-                isLoading || !inputMessage.trim()
-                  ? "text-neutral-400"
-                  : "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-              }`}
+              className={`absolute right-2 bottom-2 p-1 rounded-full ${isLoading || !inputMessage.trim()
+                ? "text-neutral-400"
+                : "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                }`}
               aria-label="Send message"
             >
               {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
@@ -479,15 +544,15 @@ const MindeaseChatbot: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowEndSessionModal(false)}
               disabled={isEndingSession}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={endSession}
               disabled={isEndingSession}
             >

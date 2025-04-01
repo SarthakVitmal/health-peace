@@ -38,7 +38,7 @@ const authOptions = {
         token.accessToken = jwt.sign(
           { id: user.id, email: user.email },
           process.env.JWT_SECRET!,
-          { expiresIn: "1h" }
+          { expiresIn: "30d" }
         );
       }
       return token;
@@ -62,6 +62,7 @@ const authOptions = {
         sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production", 
+        maxAge: 30 * 24 * 60 * 60,
       },
     },
   },

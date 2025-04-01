@@ -18,10 +18,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const router = useRouter();
 
+  const checkAuthStatus = () => {
+    // Check both localStorage and cookies
+    const hasLocalStorageToken = localStorage.getItem("isLoggedIn") === "true";
+    const hasCookieToken = document.cookie.includes('token=');
+    return hasLocalStorageToken || hasCookieToken;
+  };
+
   useEffect(() => {
-    const storedLoginState = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(storedLoginState);
-  }, []);
+    // Initial check
+    setIsLoggedIn(checkAuthStatus());
+
+    // Set up interval to check auth status periodically
+    const interval = setInterval(() => {
+      const isAuthenticated = checkAuthStatus();
+      if (isLoggedIn !== isAuthenticated) {
+        setIsLoggedIn(isAuthenticated);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
   const login = () => {
     setIsLoggedIn(true);
@@ -29,14 +46,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = () => {
+    // Clear all auth-related storage
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-    setIsLoggedIn(false);
     localStorage.removeItem("isLoggedIn");
-    router.replace("/"); // Use router.replace to navigate automatically without requiring a refresh
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    router.replace("/");
   };
+  useEffect(() => {
+    if (isLoggedIn === false) {
+      router.replace("/login");
+    }
+  }, [isLoggedIn]);
 
   if (isLoggedIn === null) {
-    return null;
+    return null; //
   }
 
   return (
