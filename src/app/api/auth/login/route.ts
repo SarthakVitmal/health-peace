@@ -41,6 +41,7 @@ export async function POST(request:NextRequest){
     // Set cookie to expire in 30 days
     response.cookies.set('token', token, {
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true, //for localhost make it false
       sameSite: "strict",
       maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
       path: "/",
