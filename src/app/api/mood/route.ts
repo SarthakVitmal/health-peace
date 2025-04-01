@@ -4,26 +4,28 @@ import Mood from "@/models/Mood";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, mood } = await request.json();
-    console.log("Received data:", { userId, mood });
+    const { userId, mood, today } = await request.json();
+    console.log("Received data:", { userId, mood, today });
 
     await connectToDatabase();
 
-    // Create date in UTC without timezone offset
-    const today = new Date();
-    const utcDate = new Date(Date.UTC(
-      today.getUTCFullYear(),
-      today.getUTCMonth(),
-      today.getUTCDate(),
-      0, 0, 0, 0
-    ));
+    // Parse the date string from the client (yyyy-MM-dd format)
+    const [year, month, day] = today.split('-').map(Number);
+    
+    // Create date in UTC to avoid timezone issues
+    const todayUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    const tomorrowUTC = new Date(todayUTC);
+    tomorrowUTC.setUTCDate(tomorrowUTC.getUTCDate() + 1);
 
-    const tomorrow = new Date(utcDate);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    console.log("Date range for query:", {
+      todayUTC,
+      tomorrowUTC,
+      isoString: todayUTC.toISOString()
+    });
 
     const existingMood = await Mood.findOne({
       userId,
-      date: { $gte: utcDate, $lt: tomorrow }
+      date: { $gte: todayUTC, $lt: tomorrowUTC }
     });
 
     if (existingMood) {
@@ -40,11 +42,15 @@ export async function POST(request: NextRequest) {
     const newMood = await Mood.create({ 
       userId, 
       mood, 
-      date: utcDate // Store as pure UTC date
+      date: todayUTC // Store the UTC date
     });
     
     return NextResponse.json(
-      { message: "Mood recorded successfully.", mood: newMood },
+      { 
+        message: "Mood recorded successfully.", 
+        mood: newMood,
+        storedDate: newMood.date.toISOString()
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -73,32 +79,26 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
 
     if (date) {
-      // Handle single date query in UTC
+      // Handle single date query
       const queryDate = new Date(date);
-      const utcDate = new Date(Date.UTC(
-        queryDate.getUTCFullYear(),
-        queryDate.getUTCMonth(),
-        queryDate.getUTCDate(),
-        0, 0, 0, 0
-      ));
-      
-      const nextDay = new Date(utcDate);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      queryDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(queryDate);
+      nextDay.setDate(nextDay.getDate() + 1);
 
       const mood = await Mood.findOne({
         userId,
         date: {
-          $gte: utcDate,
+          $gte: queryDate,
           $lt: nextDay,
         },
       });
 
       return NextResponse.json({ mood }, { status: 200 });
     } else if (month) {
-      // Handle month query in UTC
-      const [year, monthNum] = month.split('-').map(Number);
-      const startDate = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0, 0));
-      const endDate = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0, 0));
+      // Handle month query (existing functionality)
+      const startDate = new Date(`${month}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
 
       const moods = await Mood.find({
         userId,
@@ -116,7 +116,6 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("Error fetching mood data:", error);
     return NextResponse.json(
       { error: "Failed to fetch mood data." },
       { status: 500 }

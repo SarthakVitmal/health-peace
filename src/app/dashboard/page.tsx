@@ -200,11 +200,11 @@ export default function MentalEaseDashboard() {
       if (!userId) {
         throw new Error("User not authenticated");
       }
-
+      const today = format(new Date(), "yyyy-MM-dd");
       const payload = {
         userId,
-        mood
-        // Remove the date parameter - let server handle it
+        mood,
+        today
       };
 
       const response = await fetch("/api/mood", {
