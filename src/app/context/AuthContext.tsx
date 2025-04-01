@@ -1,6 +1,8 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { toast, Toaster } from "sonner";
+import { setTimeout } from "node:timers";
 
 interface AuthContextType {
   isLoggedIn: boolean | null;
@@ -40,8 +42,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // If using NextAuth, you should also sign out from NextAuth
       // This might require importing signOut from next-auth/react
       // and calling signOut()
-      
-      router.replace("/");
+      toast.success("Logged out successfully");
+      router.replace("/")
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -54,6 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
       {children}
+      <Toaster position="top-center" richColors={true} closeButton={false} expand={false} />
     </AuthContext.Provider>
   );
 };
