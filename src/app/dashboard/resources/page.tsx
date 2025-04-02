@@ -130,7 +130,7 @@ const Resources = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 p-6 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-indigo-50 p-6 font-sans">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">MindEase Resources</h1>

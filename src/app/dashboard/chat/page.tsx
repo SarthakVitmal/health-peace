@@ -138,7 +138,6 @@ const MindeaseChatbot: React.FC = () => {
       const formData = new FormData()
       formData.append('file', audioBlob, 'recording.webm')
 
-      toast.loading("Processing speech...")
       const response = await fetch('/api/whisper', { method: 'POST', body: formData })
       const { text } = await response.json()
 
@@ -357,7 +356,7 @@ const MindeaseChatbot: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-50">
+    <div className="flex flex-col h-screen bg-indigo-50">
       <Dialog open={showExitWarning} onOpenChange={setShowExitWarning}>
         <DialogContent>
           <DialogHeader>
@@ -383,7 +382,7 @@ const MindeaseChatbot: React.FC = () => {
                 setShowExitWarning(false)
                 setShowEndSessionModal(true)
               }}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-indigo-600 hover:bg-indigo-700"
             >
               End Session Properly
             </Button>
@@ -402,8 +401,8 @@ const MindeaseChatbot: React.FC = () => {
             <ChevronLeft className="size-5 text-neutral-700" />
           </Button>
           <div className="flex items-center">
-            <div className="p-2 bg-purple-50 rounded-full mr-3">
-              <Bot className="size-5 text-purple-600" />
+            <div className="p-2 bg-indigo-50 rounded-full mr-3">
+              <Bot className="size-5 text-indigo-600" />
             </div>
             <div>
               <h1 className="text-xl font-semibold text-neutral-800">SerenityBot</h1>
@@ -417,7 +416,7 @@ const MindeaseChatbot: React.FC = () => {
               onClick={toggleSpeechOutput}
               variant={isSpeaking ? "default" : "outline"}
               size="icon"
-              className={`rounded-full ${isSpeaking ? 'bg-purple-600 hover:bg-purple-700' : 'text-neutral-600'}`}
+              className={`rounded-full ${isSpeaking ? 'bg-indigo-600 hover:bg-indigo-700' : 'text-neutral-600'}`}
               aria-label={isSpeaking ? "Turn off voice output" : "Turn on voice output"}
             >
               {isSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -439,8 +438,8 @@ const MindeaseChatbot: React.FC = () => {
       <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4 scroll-smooth">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="p-4 bg-purple-50 rounded-full mb-4">
-              <Bot className="size-10 text-purple-600" />
+            <div className="p-4 bg-indigo-50 rounded-full mb-4">
+              <Bot className="size-10 text-indigo-600" />
             </div>
             <h2 className="text-2xl font-semibold text-neutral-800 mb-2">Welcome to SerenityBot</h2>
             <p className="text-neutral-600 max-w-md">
@@ -456,12 +455,12 @@ const MindeaseChatbot: React.FC = () => {
             <div className="flex max-w-[60%]">
               <Card
                 className={`p-2 h-fit border-0 shadow-sm${msg.sender === "user"
-                  ? " bg-purple-300 text-black"
+                  ? " bg-indigo-400 text-white"
                   : " bg-white text-neutral-800"
                   }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
-                <p className={`text-xs mt-1 ${msg.sender === "user" ? "text-neutral-600" : "text-neutral-400"
+                <p className={`text-xs mt-1 ${msg.sender === "user" ? "text-neutral-100" : "text-neutral-400"
                   }`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
@@ -474,9 +473,9 @@ const MindeaseChatbot: React.FC = () => {
           <div className="flex justify-start">
             <Card className="p-3 border-0 shadow-sm bg-white">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-150" />
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-300" />
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-150" />
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-300" />
               </div>
             </Card>
           </div>
@@ -513,7 +512,7 @@ const MindeaseChatbot: React.FC = () => {
                 }
               }}
               placeholder={isListening ? "Recording... (speak now)" : "Type your message..."}
-              className="w- full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-stretch-condensed"
+              className="w- full p-3 pr-12 min-h-[50px] max-h-[150px] border border-neutral-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-stretch-condensed"
               rows={1}
             />
             {/* Send button */}
@@ -524,7 +523,7 @@ const MindeaseChatbot: React.FC = () => {
               variant="ghost"
               className={`absolute right-2 bottom-2 p-1 rounded-full ${isLoading || !inputMessage.trim()
                 ? "text-neutral-400"
-                : "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                : "text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
                 }`}
               aria-label="Send message"
             >

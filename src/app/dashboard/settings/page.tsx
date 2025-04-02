@@ -82,7 +82,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 p-6 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-indigo-50 p-6 font-sans">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
 
@@ -126,7 +126,7 @@ export default function SettingsPage() {
         <Card className="mb-6 shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Shield className="h-5 w-5 text-purple-600" />
+              <Shield className="h-5 w-5 text-indigo-600" />
               Privacy
             </CardTitle>
           </CardHeader>

@@ -2,12 +2,9 @@
 import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { IconBrandGoogle, IconHeartbeat } from "@tabler/icons-react";
-import { toast, Toaster } from 'sonner'
-import { AlertCircle } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { useRouter } from 'next/navigation'
+import Link from "next/link";
+import { toast, Toaster } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 const SignupForm = () => {
   const [firstname, setFirstname] = React.useState('');
@@ -15,137 +12,177 @@ const SignupForm = () => {
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-  const router = useRouter()
+  const router = useRouter();
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       if (!email || !password || !firstname || !lastname || !phone) {
-        return toast.error("Please fill in all fields")
+        setIsLoading(false);
+        return toast.error("Please fill in all fields");
       }
+      
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password, firstname, lastname, phone })
-      })
+      });
+      
       const data = await response.json();
 
       if (!response.ok) {
+        setIsLoading(false);
         if (data.message.includes('User already exists with this email address')) {
           return toast.error("Email already exists. Please use a different email.");
         }
         return toast.error(data.message || "Signup failed");
       }
 
-      toast.success("Signup Successful")
-      await delay(3000);
+      toast.success("Signup Successful");
+      await delay(1000);
       router.push('/login');
     } catch (error) {
-      toast.error("An unexpected error happened")
+      setIsLoading(false);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="shadow-input mx-auto w-full max-w-md rounded-none bg-white p-4 md:rounded-2xl md:p-8 dark:bg-neutral-900">
-      <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">
-        Welcome to MindEase
-      </h2>
-      <p className="mt-2 max-w-sm text-sm text-neutral-600 dark:text-neutral-300">
-        Join MindEase to take the first step towards a calmer, healthier you.
-      </p>
-
-      <form className="my-8" onSubmit={handleSubmit}>
-        <div className="mb-4 flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-          <LabelInputContainer>
-            <Label htmlFor="firstname">First name</Label>
-            <Input id="firstname" placeholder="John" type="text" value={firstname} onChange={(e) => setFirstname(e.target.value)} required />
-          </LabelInputContainer>
-          <LabelInputContainer>
-            <Label htmlFor="lastname">Last name</Label>
-            <Input id="lastname" placeholder="Doe" type="text" value={lastname} onChange={(e) => setLastname(e.target.value)} required />
-          </LabelInputContainer>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 to-white p-4 overflow-y-hidden">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Join MindEase
+          </h2>
+          <p className="mt-2 text-gray-600">
+            Create your account to begin your journey towards mental wellness.
+          </p>
         </div>
-        <LabelInputContainer className="mb-4">
-          <Label htmlFor="email">Email Address</Label>
-          <Input
-            id="email"
-            placeholder="johndoe@example.com"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </LabelInputContainer>
-        <LabelInputContainer className="mb-4">
-          <Label htmlFor="phone">Phone Number</Label>
-          <Input id="phone" placeholder="+1 123 456 7890" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-        </LabelInputContainer>
-        <LabelInputContainer className="mb-4">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" placeholder="••••••••" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </LabelInputContainer>
-        <button
-          className="group/btn relative block h-10 w-full rounded-md bg-black font-medium text-white shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:from-blue-600 dark:to-teal-600 dark:shadow-[0px_1px_0px_0px_#27272a_inset,0px_-1px_0px_0px_#27272a_inset] cursor-pointer"
-          type="submit"
-        >
-          Sign up &rarr;
-          <BottomGradient />
-        </button>
 
-        <div className="my-8 h-[1px] w-full bg-gradient-to-r from-transparent via-neutral-300 to-transparent dark:via-neutral-700" />
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstname" className="text-sm font-medium text-gray-700">
+                First Name
+              </Label>
+              <Input 
+                id="firstname" 
+                type="text" 
+                placeholder="John" 
+                value={firstname}
+                onChange={(e) => setFirstname(e.target.value)}
+                required
+                className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="lastname" className="text-sm font-medium text-gray-700">
+                Last Name
+              </Label>
+              <Input 
+                id="lastname" 
+                type="text" 
+                placeholder="Doe" 
+                value={lastname}
+                onChange={(e) => setLastname(e.target.value)}
+                required
+                className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+              />
+            </div>
+          </div>
 
-        {/* <div className="flex flex-col space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+              Email Address
+            </Label>
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder="you@example.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+              Phone Number
+            </Label>
+            <Input 
+              id="phone" 
+              type="tel" 
+              placeholder="+1 123 456 7890" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+              Password
+            </Label>
+            <Input 
+              id="password" 
+              type="password" 
+              placeholder="••••••••" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+            />
+          </div>
+
           <button
-            className="group/btn shadow-input relative flex h-10 w-full items-center justify-start space-x-2 rounded-md bg-gray-50 px-4 font-medium text-black dark:bg-neutral-800 dark:shadow-[0px_0px_1px_1px_#262626]"
             type="submit"
+            disabled={isLoading}
+            className={`flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            <IconBrandGoogle className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-            <span className="text-sm text-neutral-700 dark:text-neutral-300">
-              Continue with Google
-            </span>
-            <BottomGradient />
+            {isLoading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating account...
+              </span>
+            ) : (
+              'Sign up →'
+            )}
           </button>
 
-        </div> */}
+          <div className="text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Sign in
+            </Link>
+          </div>
+        </form>
 
-        <p className="mt-4 text-center text-xs text-neutral-600 dark:text-neutral-400">
-          By signing up, you agree to our{" "}
-          <a href="#" className="text-blue-500 hover:underline">
+        <p className="mt-6 text-center text-xs text-gray-500">
+          By signing up, you agree to our{' '}
+          <Link href="/terms" className="font-medium text-indigo-600 hover:text-indigo-500">
             Terms of Service
-          </a>{" "}
-          and{" "}
-          <a href="#" className="text-blue-500 hover:underline">
+          </Link>{' '}
+          and{' '}
+          <Link href="/privacy-policy" className="font-medium text-indigo-600 hover:text-indigo-500">
             Privacy Policy
-          </a>
+          </Link>
           . Your data is safe with us.
         </p>
-      </form>
-      <Toaster richColors position='top-center' />
-    </div>
-  );
-}
-
-const BottomGradient = () => {
-  return (
-    <>
-      <span className="absolute inset-x-0 -bottom-px block h-px w-full bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-0 transition duration-500 group-hover/btn:opacity-100" />
-      <span className="absolute inset-x-10 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
-    </>
-  );
-};
-
-const LabelInputContainer = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => {
-  return (
-    <div className={cn("flex w-full flex-col space-y-2", className)}>
-      {children}
+      </div>
+      <Toaster richColors position="top-center" />
     </div>
   );
 };

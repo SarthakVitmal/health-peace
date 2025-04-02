@@ -55,7 +55,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-50 to-purple-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-indigo-50 to-indigo-50 p-4">
       <Card className="w-full max-w-md border-0 shadow-lg">
 
         <CardHeader className="text-center space-y-1">
@@ -98,7 +98,7 @@ export default function ForgotPassword() {
           </CardContent>
 
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-indigo-600" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -109,9 +109,9 @@ export default function ForgotPassword() {
               )}
             </Button>
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm text-muted-foreground font-medium">
               Remember your password?{" "}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href="/login" className="text-indigo-600 hover:underline">
                 Sign in
               </Link>
             </div>

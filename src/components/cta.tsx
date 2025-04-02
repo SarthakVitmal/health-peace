@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 
 const CTA = () => {
   return (
-    <section className="py-20 bg-primary text-primary-foreground flex justify-center">
+    <section className="py-20 bg-indigo-900 text-primary-foreground flex justify-center">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
@@ -15,16 +15,9 @@ const CTA = () => {
             </p>
           </div>
           <div className="flex flex-col gap-2 min-[400px]:flex-row">
-            <Button size="lg" variant="secondary" className="px-8">
+            <a href="/signup" className="px-8 py-2 border-1 border-white rounded-md items-center flex justify-center">
               Get Started
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
-            >
-              Learn More
-            </Button>
+            </a>
           </div>
         </div>
       </div>

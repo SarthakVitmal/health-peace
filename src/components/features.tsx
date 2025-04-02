@@ -9,10 +9,12 @@ interface FeatureProps {
 
 const Feature = ({ icon, title, description }: FeatureProps) => {
   return (
-    <div className="flex flex-col items-center text-center p-4 space-y-2 rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md">
-      <div className="p-2 rounded-full bg-primary/10 text-primary">{icon}</div>
-      <h3 className="text-xl font-semibold">{title}</h3>
-      <p className="text-muted-foreground">{description}</p>
+    <div className="flex flex-col items-center text-center p-6 space-y-4 rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-lg hover:-translate-y-1">
+      <div className="p-3 rounded-full bg-indigo-50 text-indigo-600">
+        {icon}
+      </div>
+      <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+      <p className="text-gray-600">{description}</p>
     </div>
   )
 }
@@ -67,19 +69,19 @@ const Features = () => {
   ]
 
   return (
-    <section id="features" className="py-20 bg-muted/50 flex justify-center">
+    <section id="features" className="py-20 flex justify-center bg-gradient-to-b from-indigo-50 to-white">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
-            <h2 className="text-3xl font-medium tracking-tighter sm:text-4xl md:text-5xl">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-gray-900">
               Comprehensive Mental Health Support
             </h2>
-            <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+            <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
               Our platform combines AI technology with mental health expertise to provide a complete support system.
             </p>
           </div>
         </div>
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:gap-8 pt-10">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:gap-8 pt-12">
           {features.map((feature, index) => (
             <Feature key={index} icon={feature.icon} title={feature.title} description={feature.description} />
           ))}
@@ -90,4 +92,3 @@ const Features = () => {
 }
 
 export default Features
-
