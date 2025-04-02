@@ -174,9 +174,9 @@ export default function MentalEaseDashboard() {
       const response = await fetch("/api/auth/user", {
         cache: "no-store"
       });
-      
+
       if (!response.ok) throw new Error("Failed to fetch user data");
-      
+
       const data = await response.json();
       setFirstName(data.user.firstName);
       setUserId(data.user._id);
@@ -198,9 +198,9 @@ export default function MentalEaseDashboard() {
       const response = await fetch(`/api/mood?userId=${userId}&month=${month}`, {
         next: { revalidate: 3600 } // Revalidate every hour
       });
-      
+
       if (!response.ok) throw new Error("Failed to fetch mood data");
-      
+
       const data = await response.json();
       const formattedData = data.moods.reduce((acc: MoodData, mood: { date: string; mood: string }) => {
         acc[format(new Date(mood.date), "yyyy-MM-dd")] = mood.mood;
@@ -217,7 +217,7 @@ export default function MentalEaseDashboard() {
     try {
       const today = format(new Date(), "yyyy-MM-dd");
       const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         if (!data.mood) setIsMoodModalOpen(true);
@@ -240,7 +240,7 @@ export default function MentalEaseDashboard() {
       });
 
       if (!response.ok) throw new Error("Failed to save mood");
-      
+
       await fetchMoodData();
       toast.success("Mood recorded successfully!");
     } catch (err) {
@@ -298,7 +298,7 @@ export default function MentalEaseDashboard() {
               <span className="text-xl font-bold text-gray-900">MentalEase</span>
             </div>
           </SidebarHeader>
-          
+
           <SidebarContent>
             <SidebarMenu>
               {MENU_ITEMS.map((item) => (
@@ -317,7 +317,7 @@ export default function MentalEaseDashboard() {
               ))}
             </SidebarMenu>
           </SidebarContent>
-          
+
           <SidebarFooter className="p-6">
             <Link href="/dashboard/emergency-assistance">
               <Button variant="destructive" className="w-full justify-start gap-2">
@@ -329,7 +329,7 @@ export default function MentalEaseDashboard() {
         </Sidebar>
 
         {/* Main Content - Optimized with React.memo components */}
-        <DashboardContent 
+        <DashboardContent
           firstName={firstName}
           isMoodModalOpen={isMoodModalOpen}
           setIsMoodModalOpen={setIsMoodModalOpen}
@@ -341,7 +341,7 @@ export default function MentalEaseDashboard() {
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
         />
-        
+
         <Toaster richColors position="top-center" />
       </div>
     </SidebarProvider>
@@ -383,28 +383,28 @@ const DashboardContent = React.memo(({
 
         {/* Dashboard Grid */}
         <div className="grid gap-8">
-          <WelcomeCard 
-            firstName={firstName} 
+          <WelcomeCard
+            firstName={firstName}
             isMoodModalOpen={isMoodModalOpen}
             setIsMoodModalOpen={setIsMoodModalOpen}
             handleMoodSelection={handleMoodSelection}
           />
-          
+
           <DailyQuoteCard dailyQuote={dailyQuote} />
-          
+
           <QuickActionsCard />
-          
-          <MoodSummaryCard 
-            moodSummary={moodSummary} 
-            totalMoods={totalMoods} 
+
+          <MoodSummaryCard
+            moodSummary={moodSummary}
+            totalMoods={totalMoods}
           />
-          
-          <MoodTrackingCalendar 
+
+          <MoodTrackingCalendar
             moodData={moodData}
             selectedMonth={selectedMonth}
             setSelectedMonth={setSelectedMonth}
           />
-          
+
           <ResourcesCard />
         </div>
       </div>
@@ -459,7 +459,7 @@ const WelcomeCard = React.memo(({
             </div>
           </DialogContent>
         </Dialog>
-        
+
         <Button asChild className="gap-2 bg-indigo-600 hover:bg-indigo-700">
           <Link href="/dashboard/chat">
             <MessageSquare className="h-4 w-4" />
@@ -516,14 +516,14 @@ const QuickActionsCard = React.memo(() => (
   </Card>
 ));
 
-const MoodSummaryCard = React.memo(({ 
-  moodSummary, 
-  totalMoods 
-}: { 
+const MoodSummaryCard = React.memo(({
+  moodSummary,
+  totalMoods
+}: {
   moodSummary: { happy: number; neutral: number; sad: number };
   totalMoods: number;
 }) => {
-  const calculatePercentage = (value: number) => 
+  const calculatePercentage = (value: number) =>
     totalMoods > 0 ? Math.round((value / totalMoods) * 100) : 0;
 
   return (
@@ -592,6 +592,11 @@ const MoodTrackingCalendar = React.memo(({
       </div>
     </CardHeader>
     <CardContent>
+      <div className="flex items-center justify-center mb-4 md:hidden">
+        <span className="text-lg font-bold">
+          {format(selectedMonth, "MMMM yyyy")}
+        </span>
+      </div>
       <div className="flex justify-between items-center mb-6">
         <Button
           variant="outline"
@@ -603,7 +608,7 @@ const MoodTrackingCalendar = React.memo(({
         >
           Previous Month
         </Button>
-        <span className="text-lg font-bold">
+        <span className="text-lg font-bold hidden md:block">
           {format(selectedMonth, "MMMM yyyy")}
         </span>
         <Button

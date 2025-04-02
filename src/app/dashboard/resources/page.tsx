@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, BookOpen, Video, Loader2, AlertCircle } from "lucide-react"
 
 const Resources = () => {
-  const [selectedOption, setSelectedOption] = useState("articles")
+  const [selectedOption, setSelectedOption] = useState("videos")
   const [searchQuery, setSearchQuery] = useState("")
   const [results, setResults] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -142,13 +142,13 @@ const Resources = () => {
         <Tabs defaultValue="articles" value={selectedOption} onValueChange={setSelectedOption} className="mb-8">
           <div className="flex justify-center mb-4">
             <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="articles" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Articles
-              </TabsTrigger>
               <TabsTrigger value="videos" className="flex items-center gap-2">
                 <Video className="h-4 w-4" />
                 Videos
+              </TabsTrigger>
+              <TabsTrigger value="articles" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4" />
+                Articles
               </TabsTrigger>
             </TabsList>
           </div>

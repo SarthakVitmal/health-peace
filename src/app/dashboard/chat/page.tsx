@@ -390,7 +390,7 @@ const MindeaseChatbot: React.FC = () => {
         </DialogContent>
       </Dialog>
       {/* Header */}
-      <header className="top-15 z-10 bg-white shadow-sm border-b p-4 flex items-center justify-between sticky w-full">
+      <header className="z-10 bg-white shadow-sm border-b p-4 flex items-center justify-between sticky w-full top-0">
         <div className="flex items-center">
           <Button
             onClick={confirmEndSession}
@@ -405,7 +405,7 @@ const MindeaseChatbot: React.FC = () => {
               <Bot className="size-5 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-neutral-800">SerenityBot</h1>
+              <h1 className="text-md md:text-xl font-semibold text-neutral-800">SerenityBot</h1>
               <p className="text-xs text-neutral-500">{isTyping ? "Typing..." : "Online"}</p>
             </div>
           </div>
@@ -429,7 +429,7 @@ const MindeaseChatbot: React.FC = () => {
             size="sm"
           >
             <X size={16} />
-            <span>End Session</span>
+            <span>End</span>
           </Button>
         </div>
       </header>
