@@ -14,6 +14,8 @@ const SignupForm = () => {
   const [password, setPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [errors, setErrors] = React.useState({
+    firstname: '',
+    lastname: '',
     email: '',
     password: '',
     phone: ''
@@ -23,13 +25,20 @@ const SignupForm = () => {
   const router = useRouter();
 
   // Validation functions
+  const validateName = (name: string) => {
+    const re = /^[A-Za-z]+$/;
+    return re.test(name);
+  };
+
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
   const validatePassword = (password: string) => {
-    return password.length >= 8;
+    // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    return re.test(password);
   };
 
   const validatePhone = (phone: string) => {
@@ -40,11 +49,32 @@ const SignupForm = () => {
   const handleValidation = () => {
     let valid = true;
     const newErrors = {
+      firstname: '',
+      lastname: '',
       email: '',
       password: '',
       phone: ''
     };
 
+    // First name validation
+    if (!firstname) {
+      newErrors.firstname = 'First name is required';
+      valid = false;
+    } else if (!validateName(firstname)) {
+      newErrors.firstname = 'First name should contain only alphabets';
+      valid = false;
+    }
+
+    // Last name validation
+    if (!lastname) {
+      newErrors.lastname = 'Last name is required';
+      valid = false;
+    } else if (!validateName(lastname)) {
+      newErrors.lastname = 'Last name should contain only alphabets';
+      valid = false;
+    }
+
+    // Email validation
     if (!email) {
       newErrors.email = 'Email is required';
       valid = false;
@@ -53,19 +83,21 @@ const SignupForm = () => {
       valid = false;
     }
 
+    // Password validation
     if (!password) {
       newErrors.password = 'Password is required';
       valid = false;
     } else if (!validatePassword(password)) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = 'Password must contain at least 8 characters, including uppercase, lowercase, number and special character';
       valid = false;
     }
 
+    // Phone validation
     if (!phone) {
       newErrors.phone = 'Phone number is required';
       valid = false;
     } else if (!validatePhone(phone)) {
-      newErrors.phone = 'Please enter a valid phone number';
+      newErrors.phone = 'Please enter a valid 10-digit phone number';
       valid = false;
     }
 
@@ -136,10 +168,17 @@ const SignupForm = () => {
                 type="text" 
                 placeholder="John" 
                 value={firstname}
-                onChange={(e) => setFirstname(e.target.value)}
-                required
-                className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+                onChange={(e) => {
+                  setFirstname(e.target.value);
+                  setErrors(prev => ({ ...prev, firstname: '' }));
+                }}
+                className={`w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 ${
+                  errors.firstname ? 'border-red-500' : ''
+                }`}
               />
+              {errors.firstname && (
+                <p className="text-sm text-red-500">{errors.firstname}</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -151,10 +190,17 @@ const SignupForm = () => {
                 type="text" 
                 placeholder="Doe" 
                 value={lastname}
-                onChange={(e) => setLastname(e.target.value)}
-                required
-                className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+                onChange={(e) => {
+                  setLastname(e.target.value);
+                  setErrors(prev => ({ ...prev, lastname: '' }));
+                }}
+                className={`w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 ${
+                  errors.lastname ? 'border-red-500' : ''
+                }`}
               />
+              {errors.lastname && (
+                <p className="text-sm text-red-500">{errors.lastname}</p>
+              )}
             </div>
           </div>
 
@@ -223,7 +269,14 @@ const SignupForm = () => {
               <p className="text-sm text-red-500">{errors.password}</p>
             )}
             <p className="text-xs text-gray-500 mt-1">
-              Password must be at least 8 characters
+              Password must contain at least:
+              <ul className="list-disc pl-5 mt-1">
+                <li>8 characters</li>
+                <li>1 uppercase letter</li>
+                <li>1 lowercase letter</li>
+                <li>1 number</li>
+                <li>1 special character</li>
+              </ul>
             </p>
           </div>
 
