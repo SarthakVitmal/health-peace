@@ -13,18 +13,76 @@ const SignupForm = () => {
   const [phone, setPhone] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [errors, setErrors] = React.useState({
+    email: '',
+    password: '',
+    phone: ''
+  });
+
   const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
   const router = useRouter();
+
+  // Validation functions
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 8;
+  };
+
+  const validatePhone = (phone: string) => {
+    const re = /^\+?[0-9\s\-\(\)]{10}$/;
+    return re.test(phone);
+  };
+
+  const handleValidation = () => {
+    let valid = true;
+    const newErrors = {
+      email: '',
+      password: '',
+      phone: ''
+    };
+
+    if (!email) {
+      newErrors.email = 'Email is required';
+      valid = false;
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
+      valid = false;
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+      valid = false;
+    } else if (!validatePassword(password)) {
+      newErrors.password = 'Password must be at least 8 characters';
+      valid = false;
+    }
+
+    if (!phone) {
+      newErrors.phone = 'Phone number is required';
+      valid = false;
+    } else if (!validatePhone(phone)) {
+      newErrors.phone = 'Please enter a valid phone number';
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+
+    if (!handleValidation()) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      if (!email || !password || !firstname || !lastname || !phone) {
-        setIsLoading(false);
-        return toast.error("Please fill in all fields");
-      }
-      
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -38,6 +96,7 @@ const SignupForm = () => {
       if (!response.ok) {
         setIsLoading(false);
         if (data.message.includes('User already exists with this email address')) {
+          setErrors(prev => ({ ...prev, email: "Email already exists" }));
           return toast.error("Email already exists. Please use a different email.");
         }
         return toast.error(data.message || "Signup failed");
@@ -108,10 +167,17 @@ const SignupForm = () => {
               type="email" 
               placeholder="you@example.com" 
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors(prev => ({ ...prev, email: '' }));
+              }}
+              className={`w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 ${
+                errors.email ? 'border-red-500' : ''
+              }`}
             />
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -123,10 +189,17 @@ const SignupForm = () => {
               type="tel" 
               placeholder="+1 123 456 7890" 
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+              onChange={(e) => {
+                setPhone(e.target.value);
+                setErrors(prev => ({ ...prev, phone: '' }));
+              }}
+              className={`w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 ${
+                errors.phone ? 'border-red-500' : ''
+              }`}
             />
+            {errors.phone && (
+              <p className="text-sm text-red-500">{errors.phone}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -138,10 +211,20 @@ const SignupForm = () => {
               type="password" 
               placeholder="••••••••" 
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErrors(prev => ({ ...prev, password: '' }));
+              }}
+              className={`w-full border-gray-300 focus:border-indigo-600 focus:ring-indigo-600 ${
+                errors.password ? 'border-red-500' : ''
+              }`}
             />
+            {errors.password && (
+              <p className="text-sm text-red-500">{errors.password}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Password must be at least 8 characters
+            </p>
           </div>
 
           <button

@@ -17,9 +17,9 @@ const Hero = () => {
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              <Button size="lg" className="px-8 bg-indigo-600 hover:bg-white hover:text-black cursor-pointer text-white"> 
+              <a href="/signup" className="px-8 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 cursor-pointer text-white"> 
                 Get Started
-              </Button>
+              </a>
             </div>
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center">
