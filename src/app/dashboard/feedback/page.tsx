@@ -99,7 +99,6 @@ const FeedbackPage = () => {
         <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-indigo-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
             <div className="max-w-2xl mx-auto">
                 <Card className="border shadow-md bg-white overflow-hidden">
-                    <div className="h-2 bg-primary w-full"></div>
                     <CardHeader className="pb-4">
                         <CardTitle className="text-2xl font-semibold text-center text-primary">Share Your Feedback</CardTitle>
                         <p className="text-center text-muted-foreground mt-2 text-sm">
@@ -120,7 +119,7 @@ const FeedbackPage = () => {
                                             type="button"
                                             onClick={() => setFeedbackType(type.value)}
                                             className={`flex items-center gap-2 p-3 rounded-md border transition-all ${feedbackType === type.value
-                                                    ? "border-primary bg-primary/5 text-primary"
+                                                    ? "border-indigo-500 bg-primary/5 text-primary"
                                                     : "border-border hover:border-primary/30 hover:bg-primary/5"
                                                 }`}
                                         >
@@ -202,7 +201,7 @@ const FeedbackPage = () => {
                             <div className="pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full py-6 text-base font-medium transition-all hover:shadow-md cursor-pointer"
+                                    className="w-full py-6 text-base font-medium transition-all hover:shadow-md cursor-pointer bg-indigo-600"
                                     disabled={isSubmitting || !feedback.trim()}
                                 >
                                     {isSubmitting ? (
