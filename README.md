@@ -51,3 +51,13 @@ MindEase is a modern mental wellness platform that combines AI-powered tools wit
    ```bash
    git clone https://github.com/sarthakvitmal/mindease.git
    cd mindease
+
+2. Install the nodemodules:
+   ```bash
+   npm i
+
+3. Setup the .env file
+
+4. Run the project
+   ```bash
+   npm run dev
