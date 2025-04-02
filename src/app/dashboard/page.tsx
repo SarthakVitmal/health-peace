@@ -70,14 +70,14 @@ const RESOURCES: Resource[] = [
     type: "Article",
     icon: FileText,
     description: "Learn about the causes and symptoms of anxiety disorders.",
-    href: "/dashboard/resources",
+    href: `https://studyfinds.org/americans-worry-time-anxiety/`,
   },
   {
     title: "Mindfulness Meditation",
     type: "Video",
     icon: Video,
     description: "A 10-minute guided meditation for stress relief.",
-    href: "/dashboard/resources",
+    href: "https://youtu.be/kQ89ttuCNlI?si=cHjTPCeTHWVU_l-9",
   },
   {
     title: "Cognitive Behavioral Therapy",
@@ -182,7 +182,7 @@ export default function MentalEaseDashboard() {
       setUserId(data.user._id);
       await checkMoodStatus(data.user._id);
     } catch (err) {
-      setError(session ? "Failed to fetch user data" : "Session expired. Please login again.");
+      setError(session ? "Failed to fetch user data" : "Refresh your screen or login again");
       router.push("/login");
     } finally {
       setIsLoading(false);
@@ -684,7 +684,7 @@ const ResourcesCard = React.memo(() => (
               <p className="text-xs text-gray-600">{resource.type}</p>
               <p className="mt-2 text-sm text-gray-600">{resource.description}</p>
               <Button variant="link" className="mt-2 h-auto p-0 text-blue-600 hover:text-blue-700" asChild>
-                <Link href={resource.href}>Read more</Link>
+                <Link target="_blank" href={resource.href}>Read more</Link>
               </Button>
             </div>
           </Card>
