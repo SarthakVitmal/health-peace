@@ -164,7 +164,7 @@ const Resources = () => {
               onKeyDown={handleKeyPress}
               className="pr-20"
             />
-            <Button onClick={handleSearch} className="absolute right-0 top-0 rounded-l-none" disabled={isLoading}>
+            <Button onClick={handleSearch} className="absolute right-0 top-0 rounded-l-none bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
               Search
             </Button>
