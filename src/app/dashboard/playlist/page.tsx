@@ -499,7 +499,7 @@ const MusicSearch = () => {
                         alt={item.name}
                         className="w-full h-full object-cover"
                       />
-                      <Button
+                      {/* <Button
                         variant="secondary"
                         size="icon"
                         className="absolute bottom-4 right-4 rounded-full w-12 h-12 bg-primary/90 text-primary-foreground hover:bg-primary"
@@ -510,7 +510,7 @@ const MusicSearch = () => {
                         ) : (
                           <Play className="h-6 w-6" />
                         )}
-                      </Button>
+                      </Button> */}
                     </div>
                     <CardHeader className="p-4">
                       <CardTitle className="text-base line-clamp-2">{item.name}</CardTitle>
