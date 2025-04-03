@@ -2,7 +2,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import { setTimeout } from "node:timers";
 
 interface AuthContextType {
   isLoggedIn: boolean | null;
@@ -32,16 +31,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      // Call the logout API to clear httpOnly cookies
       await fetch('/api/auth/logout');
       
-      // Clear local state and localStorage
       setIsLoggedIn(false);
       localStorage.removeItem("isLoggedIn");
-      
-      // If using NextAuth, you should also sign out from NextAuth
-      // This might require importing signOut from next-auth/react
-      // and calling signOut()
       toast.success("Logged out successfully");
       router.replace("/")
     } catch (error) {
