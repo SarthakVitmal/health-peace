@@ -182,8 +182,8 @@ export default function MentalEaseDashboard() {
       setUserId(data.user._id);
       await checkMoodStatus(data.user._id);
     } catch (err) {
-      setError(session ? "Failed to fetch user data" : "Refresh your screen or login again");
-      router.push("/login");
+      setError(session ? "Failed to fetch user data" : "Some Internal Error Occurred");
+      router.replace("/login");
     } finally {
       setIsLoading(false);
     }
@@ -285,7 +285,31 @@ export default function MentalEaseDashboard() {
   }, [userId, selectedMonth, fetchMoodData]);
 
   if (isLoading) return <Loader />;
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-white">
+      <div className="max-w-md text-center space-y-6">
+        <AlertOctagon className="h-12 w-12 text-red-500 mx-auto" />
+        <h2 className="text-2xl font-bold text-gray-900">Oops! Something went wrong</h2>
+        <p className="text-gray-600">{error}</p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            variant="outline"
+            className="border-gray-300"
+            onClick={() => window.location.reload()}
+          >
+            Refresh Page
+          </Button>
+          <Button
+            variant="default"
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => router.push("/login")}
+          >
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <SidebarProvider>

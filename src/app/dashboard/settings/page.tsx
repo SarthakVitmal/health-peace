@@ -64,7 +64,7 @@ export default function SettingsPage() {
       }
 
       toast.success(
-        `Successfully deleted ${data.deletedCount} sessions.`,
+        `Successfully deleted your chat history.`,
         {
           description: 'All your chat history has been permanently removed.',
         }
@@ -189,7 +189,7 @@ export default function SettingsPage() {
         )}
 
         {/* Notifications Section */}
-        <Card className="mb-6 shadow-sm">
+        {/* <Card className="mb-6 shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Bell className="h-5 w-5 text-amber-600" />
@@ -215,7 +215,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Security Section */}
         {/* <Card className="mb-6 shadow-sm">
