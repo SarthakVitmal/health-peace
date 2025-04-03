@@ -9,6 +9,7 @@ import { AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useAuth } from "@/app/context/AuthContext";
+import { useEffect } from "react";
 
 const LoginPage = () => {
     const [email, setEmail] = React.useState('');
@@ -16,7 +17,14 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = React.useState(false);
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const router = useRouter()
-    const { login } = useAuth();
+    const { login, isLoggedIn } = useAuth();
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token && isLoggedIn === true) {
+            localStorage.removeItem("isLoggedIn");
+        }
+    }, [isLoggedIn]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
