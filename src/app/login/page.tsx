@@ -21,7 +21,7 @@ const LoginPage = () => {
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        if (!token && isLoggedIn === true) {
+        if (!token && isLoggedIn === false) {
             localStorage.removeItem("isLoggedIn");
         }
     }, [isLoggedIn]);
