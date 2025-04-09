@@ -83,9 +83,7 @@ const MindeaseChatbot: React.FC = () => {
     const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window
 
     if (!hasSpeechSynthesis) {
-      // If speech synthesis is not supported, we'll still allow Whisper for input
-      // but disable the output option
-      toast.warning("Voice output is not supported in your browser")
+      toast.warning("Voice output is not supported")
     }
 
     return () => {
