@@ -44,7 +44,7 @@ const Header = () => {
           </Link>
           {isLoggedIn && (
             <Link href="/dashboard" onClick={closeMenu}>
-              <Button variant="outline" className="ml-3 border-gray-300 text-gray-700 hover:bg-gray-50">
+              <Button variant="outline" className="ml-3 border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer">
                 Dashboard
               </Button>
             </Link>
@@ -78,7 +78,7 @@ const Header = () => {
                 logout();
                 closeMenu();
               }}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
             >
               Log Out
             </Button>

@@ -548,6 +548,11 @@ const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedM
         </div>
       </CardHeader>
       <CardContent>
+        <div className="md:hidden flex justify-center items-center mb-4">
+        <span className="text-lg font-bold">
+            {format(selectedMonth, "MMMM yyyy")}
+          </span>
+        </div>
         <div className="flex justify-between items-center mb-6">
           <Button
             variant="outline"
@@ -555,7 +560,7 @@ const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedM
           >
             Previous Month
           </Button>
-          <span className="text-lg font-bold">
+          <span className="hidden md:flex text-lg font-bold">
             {format(selectedMonth, "MMMM yyyy")}
           </span>
           <Button
