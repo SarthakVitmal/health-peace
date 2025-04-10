@@ -381,13 +381,6 @@ export default function MentalEaseDashboard() {
             <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
             {isRetrying ? 'Retrying...' : 'Refresh Data'}
           </Button>
-          <Button
-            variant="default"
-            className="bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => handleSubmit()}
-          >
-            Go to Login
-          </Button>
         </div>
       </div>
     </div>
