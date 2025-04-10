@@ -20,8 +20,12 @@ const LoginPage = () => {
     const { login, isLoggedIn } = useAuth();
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token && isLoggedIn === false) {
+        const token = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('token='))
+            ?.split('=')[1];
+        console.log("Token:", token);
+        if (!token && isLoggedIn === true) {
             localStorage.removeItem("isLoggedIn");
         }
     }, [isLoggedIn]);
@@ -37,11 +41,11 @@ const LoginPage = () => {
 
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({email, password})
-            });
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+                credentials: 'include', 
+              });
+          
 
             const data = await response.json();
             
@@ -58,11 +62,6 @@ const LoginPage = () => {
 
             // Update auth state through context
             login();
-            
-            if (data.token) {
-                localStorage.setItem("token", data.token);
-            }
-
             toast.success("Login Successful");
             await delay(1000);
             router.push('/dashboard');

@@ -159,7 +159,19 @@ export default function MentalEaseDashboard() {
 
   const router = useRouter();
   const { data: session } = useSession();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, checkAuthStatus } = useAuth();
+
+  useEffect(() => {
+    const validateAuth = async () => {
+      const isAuthenticated = await checkAuthStatus();
+      console.log(isAuthenticated)
+      if (!isAuthenticated) {
+        router.replace("/login");
+      }
+    };
+    
+    validateAuth();
+  }, [checkAuthStatus, router]);
 
   const handleSubmit = async () => {
     await fetch('/api/auth/logout');
@@ -203,7 +215,7 @@ export default function MentalEaseDashboard() {
         if (response.status === 401 || retryCount >= 2) {
           throw new Error("Failed to fetch user data");
         }
-        
+
         // Instead of throwing, retry once automatically
         if (!retry && !isRetrying) {
           setTimeout(() => fetchUserData(true), 1500);
@@ -310,11 +322,11 @@ export default function MentalEaseDashboard() {
 
       // If no cache or expired, fetch new quote
       const response = await fetch('/api/quotes');
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch quote");
       }
-      
+
       const result = await response.json();
 
       localStorage.setItem('dailyQuote', JSON.stringify(result));
@@ -342,7 +354,7 @@ export default function MentalEaseDashboard() {
       fetchUserData();
       fetchDailyQuote();
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [fetchUserData, fetchDailyQuote]);
 
@@ -352,7 +364,7 @@ export default function MentalEaseDashboard() {
   }, [userId, selectedMonth, fetchMoodData]);
 
   if (isLoading) return <Loader />;
-  
+
   if (error) return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-white">
       <div className="max-w-md text-center space-y-6">
@@ -722,7 +734,7 @@ const MoodTrackingCalendar = React.memo(({
         </div>
 
         <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: 31 }, (_, i) => {
+          {Array.from({ length: 31 }, (_, i) => {
             const day = i + 1;
             const currentDate = new Date(Date.UTC(
               selectedMonth.getUTCFullYear(),
@@ -746,69 +758,69 @@ const MoodTrackingCalendar = React.memo(({
             const isToday = currentDate.getTime() === new Date().setHours(10, 10, 10, 10);
 
             return (
-                <div
+              <div
                 key={day}
                 className="relative group"
                 onMouseEnter={() => setHoveredDate(dateString)}
                 onMouseLeave={() => setHoveredDate(null)}
-                >
+              >
                 <div
-                className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-pointer transition-all",
-                bgColor,
-                mood ? "text-white" : "text-gray-900",
-                hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
-                isToday && "border-2 border-indigo-500"
-                )}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-pointer transition-all",
+                    bgColor,
+                    mood ? "text-white" : "text-gray-900",
+                    hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
+                    isToday && "border-2 border-indigo-500"
+                  )}
                 >
-                {day}
+                  {day}
                 </div>
 
                 {/* Tooltip showing mood reason */}
                 {hoveredDate === dateString && (
-                <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
-                {currentDate.getTime() <= new Date().setHours(23, 59, 59, 999) ? (
-                  mood ? (
-                  <>
-                  <div
-                  className={cn(
-                    "font-medium capitalize",
-                    mood === "happy" && "text-green-500",
-                    mood === "neutral" && "text-blue-500",
-                    mood === "sad" && "text-red-500"
-                  )}
-                  >
-                  {mood}
+                  <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
+                    {currentDate.getTime() <= new Date().setHours(23, 59, 59, 999) ? (
+                      mood ? (
+                        <>
+                          <div
+                            className={cn(
+                              "font-medium capitalize",
+                              mood === "happy" && "text-green-500",
+                              mood === "neutral" && "text-blue-500",
+                              mood === "sad" && "text-red-500"
+                            )}
+                          >
+                            {mood}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {format(currentDate, "MMMM d, yyyy")}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-medium text-gray-500">
+                            No mood recorded
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {format(currentDate, "MMMM d, yyyy")}
+                          </div>
+                        </>
+                      )
+                    ) : (
+                      <>
+                        <div className="font-medium text-indigo-500">
+                          Mood tracking not available yet
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {format(currentDate, "MMMM d, yyyy")}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                  {format(currentDate, "MMMM d, yyyy")}
-                  </div>
-                  </>
-                  ) : (
-                  <>
-                  <div className="font-medium text-gray-500">
-                  No mood recorded
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                  {format(currentDate, "MMMM d, yyyy")}
-                  </div>
-                  </>
-                  )
-                ) : (
-                  <>
-                  <div className="font-medium text-indigo-500">
-                  Mood tracking not available yet
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                  {format(currentDate, "MMMM d, yyyy")}
-                  </div>
-                  </>
                 )}
-                </div>
-                )}
-                </div>
+              </div>
             );
-            })}
+          })}
         </div>
       </CardContent>
     </Card>
