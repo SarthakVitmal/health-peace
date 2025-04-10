@@ -11,6 +11,12 @@ import { Loader2, EyeIcon, EyeOffIcon, AlertCircle, LockKeyhole } from "lucide-r
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+const validatePassword = (password: string) => {
+    // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    return re.test(password);
+};
+
 export default function ResetPasswordPage() {
     const [loading, setLoading] = useState(false);
     const [password, setPassword] = useState("");
@@ -35,8 +41,8 @@ export default function ResetPasswordPage() {
             setError("Passwords don't match");
             return;
         }
-        if (password.length < 8) {
-            setError("Password must be at least 8 characters");
+        if (!validatePassword(password)) {
+            setError("Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character");
             return;
         }
         if (!token) {
@@ -67,7 +73,8 @@ export default function ResetPasswordPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 to-white p-4 overflow-y-hidden">
+        <>
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 to-white p-4 overflow-y-hidden"></div>
             <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
                 <div className="mb-8 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100">
@@ -177,6 +184,6 @@ export default function ResetPasswordPage() {
                 </form>
                 <Toaster richColors position="top-center" />
             </div>
-        </div>
+        </>
     );
 }

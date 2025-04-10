@@ -166,7 +166,7 @@ export default function MentalEaseDashboard() {
       const isAuthenticated = await checkAuthStatus();
       console.log(isAuthenticated)
       if (!isAuthenticated) {
-        router.replace("/login");
+        router.replace("/");
       }
     };
     
