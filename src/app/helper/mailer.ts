@@ -127,8 +127,8 @@ export const sendEmail = async (email: string, emailType: string, userId: string
                     }
                     .button {
                         display: inline-block;
-                        background: #fff;
-                        color:  linear-gradient(90deg, #6366f1, #8b5cf6, #d946ef) ;
+                        background: linear-gradient(90deg, #6366f1, #8b5cf6, #d946ef) ;
+                        color: #fff;
                         padding: 15px 32px;
                         text-decoration: none;
                         border-radius: 8px;
