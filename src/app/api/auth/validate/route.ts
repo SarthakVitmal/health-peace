@@ -1,28 +1,55 @@
 // /app/api/auth/validate/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get token from HTTP-only cookie
-    const token = request.cookies.get('token')?.value;
+    const token = (await cookies()).get('token')?.value;
     
     if (!token) {
-      return NextResponse.json({ isAuthenticated: false }, { status: 401 });
+      return NextResponse.json(
+        { isAuthenticated: false, error: "Missing token" },
+        { status: 401, headers: securityHeaders() }
+      );
     }
     
-    // Verify the token
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      return NextResponse.json({ 
-        isAuthenticated: true,
-        user: decoded 
-      }, { status: 200 });
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { exp: number };
+      return NextResponse.json(
+        { 
+          isAuthenticated: true,
+          expiresAt: decoded.exp,
+          user: decoded
+        },
+        { headers: securityHeaders() }
+      );
     } catch (error) {
-      return NextResponse.json({ isAuthenticated: false }, { status: 401 });
+      if (error instanceof jwt.TokenExpiredError) {
+        return NextResponse.json(
+          { isAuthenticated: false, error: "Token expired" },
+          { status: 401, headers: securityHeaders() }
+        );
+      }
+      return NextResponse.json(
+        { isAuthenticated: false, error: "Invalid token" },
+        { status: 401, headers: securityHeaders() }
+      );
     }
   } catch (error) {
-    console.error('Validation error:', error);
-    return NextResponse.json({ isAuthenticated: false }, { status: 500 });
+    console.error('Auth validation error:', error);
+    return NextResponse.json(
+      { isAuthenticated: false, error: "Server error" },
+      { status: 500, headers: securityHeaders() }
+    );
   }
+}
+
+function securityHeaders() {
+  return {
+    'Content-Security-Policy': "default-src 'self'",
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+  };
 }

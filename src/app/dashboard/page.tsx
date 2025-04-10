@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { format } from "date-fns";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import {
   AlertOctagon,
   ArrowRight,
@@ -57,14 +57,6 @@ interface Resource {
   href: string;
 }
 
-interface QuickAction {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-  color: string;
-  variant?: "destructive";
-}
-
 // Static Data
 const RESOURCES: Resource[] = [
   {
@@ -90,7 +82,7 @@ const RESOURCES: Resource[] = [
   },
 ];
 
-const ACTIONS: QuickAction[] = [
+const ACTIONS = [
   {
     title: "Chat with AI",
     icon: MessageSquare,
@@ -133,7 +125,6 @@ const MENU_ITEMS = [
   { title: "Settings", icon: Settings, href: "dashboard/settings" },
 ];
 
-// Fallback quotes for when API fails
 const FALLBACK_QUOTES = [
   {
     q: "You are braver than you believe, stronger than you seem, and smarter than you think.",
@@ -154,35 +145,14 @@ export default function MentalEaseDashboard() {
   const [dailyQuote, setDailyQuote] = useState<DailyQuote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const abortController = useRef(new AbortController());
+  const retryCountRef = useRef(0);
 
   const router = useRouter();
   const { data: session } = useSession();
   const { isLoggedIn, checkAuthStatus } = useAuth();
 
-  useEffect(() => {
-    const validateAuth = async () => {
-      const isAuthenticated = await checkAuthStatus();
-      console.log(isAuthenticated)
-      if (!isAuthenticated) {
-        router.replace("/");
-      }
-    };
-    
-    validateAuth();
-  }, [checkAuthStatus, router]);
-
-  const handleSubmit = async () => {
-    await fetch('/api/auth/logout');
-    if (isLoggedIn === true) {
-      localStorage.removeItem("isLoggedIn");
-    }
-    toast.success("Please login again");
-    router.replace("/login");
-  }
-
-  // Memoized mood summary calculations
+  // Memoized mood summary
   const { moodSummary, totalMoods } = useMemo(() => {
     const summary = { happy: 0, neutral: 0, sad: 0 };
     Object.values(moodData).forEach(mood => {
@@ -194,174 +164,128 @@ export default function MentalEaseDashboard() {
     };
   }, [moodData]);
 
-  // Improved fetch user data with retry logic
-  const fetchUserData = useCallback(async (retry = false) => {
-    if (retry) {
-      setIsRetrying(true);
-      setRetryCount(prev => prev + 1);
-    }
-
+  const fetchWithRetry = useCallback(async (url: string, options: RequestInit = {}, retries = 3) => {
     try {
-      const response = await fetch("/api/auth/user", {
-        cache: "no-store",
-        // Add a cache-busting parameter
+      const response = await fetch(url, {
+        ...options,
+        signal: abortController.current.signal,
         headers: {
-          'x-cache-buster': Date.now().toString()
+          ...options.headers,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
       });
 
-      if (!response.ok) {
-        // Only throw error if we've already retried multiple times or it's a 401
-        if (response.status === 401 || retryCount >= 2) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        // Instead of throwing, retry once automatically
-        if (!retry && !isRetrying) {
-          setTimeout(() => fetchUserData(true), 1500);
-          return;
-        }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
+        return fetchWithRetry(url, options, retries - 1);
       }
-
-      const data = await response.json();
-      setFirstName(data.user.firstName);
-      setUserId(data.user._id);
-      setError(""); // Clear any existing errors
-      await checkMoodStatus(data.user._id);
-    } catch (err) {
-      setError(session ? "Failed to fetch user data" : "Unable to load dashboard data");
-      // Only redirect to login if we've tried multiple times
-      if (retryCount >= 2 && !session) {
-        setTimeout(() => router.replace("/login"), 2000);
-      }
-    } finally {
-      setIsLoading(false);
-      setIsRetrying(false);
+      throw error;
     }
-  }, [router, session, retryCount, isRetrying]);
+  }, []);
 
-  // Fetch mood data with improved error handling
+  const fetchUserData = useCallback(async () => {
+    try {
+      const userData = await fetchWithRetry("/api/auth/user");
+      setFirstName(userData.user.firstName);
+      setUserId(userData.user._id);
+      setError("");
+    } catch (error) {
+      setError("Failed to fetch user data");
+      if (retryCountRef.current < 2) {
+        retryCountRef.current += 1;
+        setTimeout(fetchUserData, 2000);
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [fetchWithRetry, router]);
+
   const fetchMoodData = useCallback(async () => {
     if (!userId) return;
-
     try {
       const month = format(selectedMonth, "yyyy-MM");
-      const response = await fetch(`/api/mood?userId=${userId}&month=${month}`, {
-        next: { revalidate: 3600 } // Revalidate every hour
-      });
-
-      if (!response.ok) {
-        // Instead of throwing, just log the error and continue
-        console.error("Mood data fetch failed, will use empty data");
-        return;
-      }
-
-      const data = await response.json();
+      const data = await fetchWithRetry(`/api/mood?userId=${userId}&month=${month}`);
+      
       const formattedData = data.moods.reduce((acc: MoodData, mood: { date: string; mood: string }) => {
         acc[format(new Date(mood.date), "yyyy-MM-dd")] = mood.mood;
         return acc;
       }, {});
       setMoodData(formattedData);
-    } catch (err) {
-      console.error("Error fetching mood data:", err);
-      // Don't set error state, just log it - allows the rest of the UI to load
+    } catch (error) {
+      console.error("Mood data fetch error:", error);
     }
-  }, [userId, selectedMonth]);
+  }, [userId, selectedMonth, fetchWithRetry]);
 
-  // Check if mood has been recorded today
-  const checkMoodStatus = useCallback(async (userId: string) => {
+  const checkMoodStatus = useCallback(async () => {
+    if (!userId) return;
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
-
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.mood) setIsMoodModalOpen(true);
-      }
-    } catch (err) {
-      console.error("Error checking mood status:", err);
-      // Non-fatal error, just log it
+      const data = await fetchWithRetry(`/api/mood?userId=${userId}&date=${today}`);
+      if (!data.mood) setIsMoodModalOpen(true);
+    } catch (error) {
+      console.error("Mood check error:", error);
     }
-  }, []);
+  }, [userId, fetchWithRetry]);
 
-  // Handle mood selection
   const handleMoodSelection = useCallback(async (mood: string) => {
     setIsMoodModalOpen(false);
-
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const response = await fetch("/api/mood", {
+      await fetchWithRetry("/api/mood", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, mood, today }),
+        body: JSON.stringify({ userId, mood, today: format(new Date(), "yyyy-MM-dd") })
       });
-
-      if (!response.ok) throw new Error("Failed to save mood");
-
       await fetchMoodData();
       toast.success("Mood recorded successfully!");
-    } catch (err) {
+    } catch (error) {
       toast.error("Failed to record mood");
     }
-  }, [userId, fetchMoodData]);
+  }, [userId, fetchMoodData, fetchWithRetry]);
 
-  // Fetch daily quote with robust error handling
   const fetchDailyQuote = useCallback(async () => {
     try {
-      // First try local storage cache to prevent flickering
       const cachedQuote = localStorage.getItem('dailyQuote');
-      const cachedTimestamp = localStorage.getItem('dailyQuoteTimestamp');
-
-      if (cachedQuote && cachedTimestamp) {
-        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-        if (parseInt(cachedTimestamp) > oneDayAgo) {
-          setDailyQuote(JSON.parse(cachedQuote));
-          return;
-        }
-      }
-
-      // If no cache or expired, fetch new quote
-      const response = await fetch('/api/quotes');
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch quote");
-      }
-
-      const result = await response.json();
-
-      localStorage.setItem('dailyQuote', JSON.stringify(result));
-      localStorage.setItem('dailyQuoteTimestamp', Date.now().toString());
-      setDailyQuote(result);
-    } catch (err) {
-      console.error("Error fetching quote:", err);
-      // Fallback to predefined quotes
+      if (cachedQuote) setDailyQuote(JSON.parse(cachedQuote));
+      
+      const data = await fetchWithRetry('/api/quotes');
+      localStorage.setItem('dailyQuote', JSON.stringify(data));
+      setDailyQuote(data);
+    } catch (error) {
       setDailyQuote(FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]);
     }
-  }, []);
+  }, [fetchWithRetry]);
 
-  // Manual retry handler
-  const handleRetry = useCallback(() => {
-    setIsLoading(true);
-    setError("");
-    fetchUserData(true);
-    fetchDailyQuote();
-  }, [fetchUserData, fetchDailyQuote]);
-
-  // Initial data loading
   useEffect(() => {
-    // Initialize data fetching with a slight delay to allow for auth to complete
-    const timer = setTimeout(() => {
-      fetchUserData();
-      fetchDailyQuote();
-    }, 100);
+    const initDashboard = async () => {
+      try {
+        const isValid = await checkAuthStatus();
+        if (!isValid) return router.replace("/login");
 
-    return () => clearTimeout(timer);
-  }, [fetchUserData, fetchDailyQuote]);
+        await Promise.all([
+          fetchUserData(),
+          fetchDailyQuote()
+        ]);
+        
+        await fetchMoodData();
+        checkMoodStatus();
+      } catch (error) {
+        setError("Failed to initialize dashboard");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Fetch mood data when month or userId changes
-  useEffect(() => {
-    if (userId) fetchMoodData();
-  }, [userId, selectedMonth, fetchMoodData]);
+    initDashboard();
+
+    return () => {
+      abortController.current.abort();
+      abortController.current = new AbortController();
+    };
+  }, [checkAuthStatus, fetchUserData, fetchMoodData, fetchDailyQuote, checkMoodStatus, router]);
 
   if (isLoading) return <Loader />;
 
@@ -369,19 +293,12 @@ export default function MentalEaseDashboard() {
     <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-white">
       <div className="max-w-md text-center space-y-6">
         <AlertOctagon className="h-12 w-12 text-red-500 mx-auto" />
-        <h2 className="text-2xl font-bold text-gray-900">Oops! Something went wrong</h2>
-        <p className="text-gray-600">{error}</p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            variant="outline"
-            className="border-gray-300 flex items-center gap-2"
-            onClick={handleRetry}
-            disabled={isRetrying}
-          >
-            <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
-            {isRetrying ? 'Retrying...' : 'Refresh Data'}
-          </Button>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">Loading Error</h2>
+        <p className="text-gray-600">Failed to load dashboard data</p>
+        <Button onClick={() => window.location.reload()} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Try Again
+        </Button>
       </div>
     </div>
   );
@@ -427,19 +344,41 @@ export default function MentalEaseDashboard() {
           </SidebarFooter>
         </Sidebar>
 
-        {/* Main Content - Optimized with React.memo components */}
-        <DashboardContent
-          firstName={firstName}
-          isMoodModalOpen={isMoodModalOpen}
-          setIsMoodModalOpen={setIsMoodModalOpen}
-          handleMoodSelection={handleMoodSelection}
-          dailyQuote={dailyQuote}
-          moodSummary={moodSummary}
-          totalMoods={totalMoods}
-          moodData={moodData}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-        />
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-8 bg-gradient-to-b from-gray-50 to-white">
+          <div className="mx-auto w-full max-w-7xl">
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-600 mt-2">Welcome back to MentalEase. How are you feeling today?</p>
+            </div>
+
+            <div className="grid gap-8">
+              <WelcomeCard
+                firstName={firstName}
+                isMoodModalOpen={isMoodModalOpen}
+                setIsMoodModalOpen={setIsMoodModalOpen}
+                handleMoodSelection={handleMoodSelection}
+              />
+
+              <DailyQuoteCard dailyQuote={dailyQuote} />
+
+              <QuickActionsCard />
+
+              <MoodSummaryCard
+                moodSummary={moodSummary}
+                totalMoods={totalMoods}
+              />
+
+              <MoodTrackingCalendar
+                moodData={moodData}
+                selectedMonth={selectedMonth}
+                setSelectedMonth={setSelectedMonth}
+              />
+
+              <ResourcesCard />
+            </div>
+          </div>
+        </main>
 
         <Toaster richColors position="top-center" />
       </div>
@@ -447,82 +386,8 @@ export default function MentalEaseDashboard() {
   );
 }
 
-// Memoized Dashboard Content Component
-const DashboardContent = React.memo(({
-  firstName,
-  isMoodModalOpen,
-  setIsMoodModalOpen,
-  handleMoodSelection,
-  dailyQuote,
-  moodSummary,
-  totalMoods,
-  moodData,
-  selectedMonth,
-  setSelectedMonth
-}: {
-  firstName: string;
-  isMoodModalOpen: boolean;
-  setIsMoodModalOpen: (val: boolean) => void;
-  handleMoodSelection: (mood: string) => void;
-  dailyQuote: DailyQuote | null;
-  moodSummary: { happy: number; neutral: number; sad: number };
-  totalMoods: number;
-  moodData: MoodData;
-  selectedMonth: Date;
-  setSelectedMonth: (date: Date) => void;
-}) => {
-  return (
-    <main className="flex-1 overflow-auto p-8 bg-gradient-to-b from-gray-50 to-white">
-      <div className="mx-auto w-full max-w-7xl">
-        {/* Dashboard Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back to MentalEase. How are you feeling today?</p>
-        </div>
-
-        {/* Dashboard Grid */}
-        <div className="grid gap-8">
-          <WelcomeCard
-            firstName={firstName}
-            isMoodModalOpen={isMoodModalOpen}
-            setIsMoodModalOpen={setIsMoodModalOpen}
-            handleMoodSelection={handleMoodSelection}
-          />
-
-          <DailyQuoteCard dailyQuote={dailyQuote} />
-
-          <QuickActionsCard />
-
-          <MoodSummaryCard
-            moodSummary={moodSummary}
-            totalMoods={totalMoods}
-          />
-
-          <MoodTrackingCalendar
-            moodData={moodData}
-            selectedMonth={selectedMonth}
-            setSelectedMonth={setSelectedMonth}
-          />
-
-          <ResourcesCard />
-        </div>
-      </div>
-    </main>
-  );
-});
-
-// Memoized Card Components
-const WelcomeCard = React.memo(({
-  firstName,
-  isMoodModalOpen,
-  setIsMoodModalOpen,
-  handleMoodSelection
-}: {
-  firstName: string;
-  isMoodModalOpen: boolean;
-  setIsMoodModalOpen: (val: boolean) => void;
-  handleMoodSelection: (mood: string) => void;
-}) => (
+// Memoized Components
+const WelcomeCard = React.memo(({ firstName, isMoodModalOpen, setIsMoodModalOpen, handleMoodSelection }: any) => (
   <Card className="bg-white shadow-lg">
     <CardContent className="p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -570,7 +435,7 @@ const WelcomeCard = React.memo(({
   </Card>
 ));
 
-const DailyQuoteCard = React.memo(({ dailyQuote }: { dailyQuote: DailyQuote | null }) => (
+const DailyQuoteCard = React.memo(({ dailyQuote }: any) => (
   <Card className="bg-white shadow-lg">
     <CardHeader>
       <CardTitle className="text-xl font-bold text-gray-900">Daily Motivation</CardTitle>
@@ -583,7 +448,7 @@ const DailyQuoteCard = React.memo(({ dailyQuote }: { dailyQuote: DailyQuote | nu
         </div>
       ) : (
         <div className="rounded-lg bg-gray-100 p-6 text-center text-gray-600">
-          Couldn't load quote. Please try again.
+          Loading daily quote...
         </div>
       )}
     </CardContent>
@@ -615,13 +480,7 @@ const QuickActionsCard = React.memo(() => (
   </Card>
 ));
 
-const MoodSummaryCard = React.memo(({
-  moodSummary,
-  totalMoods
-}: {
-  moodSummary: { happy: number; neutral: number; sad: number };
-  totalMoods: number;
-}) => {
+const MoodSummaryCard = React.memo(({ moodSummary, totalMoods }: any) => {
   const calculatePercentage = (value: number) =>
     totalMoods > 0 ? Math.round((value / totalMoods) * 100) : 0;
 
@@ -662,17 +521,11 @@ const MoodSummaryCard = React.memo(({
   );
 });
 
-const MoodTrackingCalendar = React.memo(({
-  moodData,
-  selectedMonth,
-  setSelectedMonth
-}: {
-  moodData: MoodData;
-  selectedMonth: Date;
-  setSelectedMonth: (date: Date) => void;
-}) => {
-  // State to track which date's tooltip is visible
+const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedMonth }: any) => {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const monthStart = startOfMonth(selectedMonth);
+  const monthEnd = endOfMonth(selectedMonth);
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   return (
     <Card className="bg-white shadow-lg">
@@ -695,117 +548,91 @@ const MoodTrackingCalendar = React.memo(({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-center mb-4 md:hidden">
-          <span className="text-lg font-bold">
-            {format(selectedMonth, "MMMM yyyy")}
-          </span>
-        </div>
         <div className="flex justify-between items-center mb-6">
           <Button
             variant="outline"
-            onClick={() => {
-              const prevMonth = new Date(selectedMonth);
-              prevMonth.setMonth(prevMonth.getMonth() - 1);
-              setSelectedMonth(prevMonth);
-            }}
+            onClick={() => setSelectedMonth(startOfMonth(new Date().setMonth(selectedMonth.getMonth() - 1)))}
           >
             Previous Month
           </Button>
-          <span className="text-lg font-bold hidden md:block">
+          <span className="text-lg font-bold">
             {format(selectedMonth, "MMMM yyyy")}
           </span>
           <Button
             variant="outline"
-            onClick={() => {
-              const nextMonth = new Date(selectedMonth);
-              nextMonth.setMonth(nextMonth.getMonth() + 1);
-              setSelectedMonth(nextMonth);
-            }}
+            onClick={() => setSelectedMonth(startOfMonth(new Date().setMonth(selectedMonth.getMonth() + 1)))}
           >
             Next Month
           </Button>
         </div>
 
         <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 31 }, (_, i) => {
-            const day = i + 1;
-            const currentDate = new Date(Date.UTC(
-              selectedMonth.getUTCFullYear(),
-              selectedMonth.getUTCMonth(),
-              day,
-              0, 0, 0, 0
-            ));
-
-            if (currentDate.getUTCMonth() !== selectedMonth.getUTCMonth()) {
-              return <div key={day} className="h-10 w-10" />;
-            }
-
-            const dateString = format(currentDate, "yyyy-MM-dd");
+          {daysInMonth.map((date) => {
+            const dateString = format(date, "yyyy-MM-dd");
             const mood = moodData[dateString];
+            const isCurrentMonth = isSameMonth(date, selectedMonth);
+            const isFutureDate = date > new Date();
+
+            if (!isCurrentMonth) return <div key={dateString} className="h-10 w-10" />;
 
             let bgColor = "bg-gray-200";
             if (mood === "happy") bgColor = "bg-green-500";
             if (mood === "neutral") bgColor = "bg-blue-500";
             if (mood === "sad") bgColor = "bg-red-500";
 
-            const isToday = currentDate.getTime() === new Date().setHours(10, 10, 10, 10);
-
             return (
               <div
-                key={day}
+                key={dateString}
                 className="relative group"
-                onMouseEnter={() => setHoveredDate(dateString)}
+                onMouseEnter={() => !isFutureDate && setHoveredDate(dateString)}
                 onMouseLeave={() => setHoveredDate(null)}
               >
                 <div
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-pointer transition-all",
+                    "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-default transition-all",
                     bgColor,
                     mood ? "text-white" : "text-gray-900",
                     hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
-                    isToday && "border-2 border-indigo-500"
+                    isToday(date) && "border-2 border-indigo-500"
                   )}
                 >
-                  {day}
+                  {format(date, "d")}
                 </div>
 
-                {/* Tooltip showing mood reason */}
                 {hoveredDate === dateString && (
                   <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
-                    {currentDate.getTime() <= new Date().setHours(23, 59, 59, 999) ? (
-                      mood ? (
-                        <>
-                          <div
-                            className={cn(
-                              "font-medium capitalize",
-                              mood === "happy" && "text-green-500",
-                              mood === "neutral" && "text-blue-500",
-                              mood === "sad" && "text-red-500"
-                            )}
-                          >
-                            {mood}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {format(currentDate, "MMMM d, yyyy")}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="font-medium text-gray-500">
-                            No mood recorded
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {format(currentDate, "MMMM d, yyyy")}
-                          </div>
-                        </>
-                      )
-                    ) : (
+                    {isFutureDate ? (
                       <>
                         <div className="font-medium text-indigo-500">
-                          Mood tracking not available yet
+                          Future Date
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {format(currentDate, "MMMM d, yyyy")}
+                          {format(date, "MMMM d, yyyy")}
+                        </div>
+                      </>
+                    ) : mood ? (
+                      <>
+                        <div
+                          className={cn(
+                            "font-medium capitalize",
+                            mood === "happy" && "text-green-500",
+                            mood === "neutral" && "text-blue-500",
+                            mood === "sad" && "text-red-500"
+                          )}
+                        >
+                          {mood}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {format(date, "MMMM d, yyyy")}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-medium text-gray-500">
+                          No mood recorded
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {format(date, "MMMM d, yyyy")}
                         </div>
                       </>
                     )}
@@ -819,6 +646,7 @@ const MoodTrackingCalendar = React.memo(({
     </Card>
   );
 });
+
 const ResourcesCard = React.memo(() => (
   <Card className="bg-white shadow-lg">
     <CardHeader className="flex flex-row items-center justify-between">
