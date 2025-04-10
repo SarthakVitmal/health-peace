@@ -665,98 +665,155 @@ const MoodTrackingCalendar = React.memo(({
   moodData: MoodData;
   selectedMonth: Date;
   setSelectedMonth: (date: Date) => void;
-}) => (
-  <Card className="bg-white shadow-lg">
-    <CardHeader className="flex flex-row items-center justify-between">
-      <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
-      <div className="flex items-center space-x-2">
-        {["happy", "neutral", "sad"].map((mood) => (
-          <div key={mood} className="flex items-center space-x-1">
-            <div
-              className={cn(
-                "h-3 w-3 rounded-full",
-                mood === "happy" && "bg-green-500",
-                mood === "neutral" && "bg-blue-500",
-                mood === "sad" && "bg-red-500",
-              )}
-            />
-            <span className="text-xs text-gray-600 capitalize">{mood}</span>
-          </div>
-        ))}
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="flex items-center justify-center mb-4 md:hidden">
-        <span className="text-lg font-bold">
-          {format(selectedMonth, "MMMM yyyy")}
-        </span>
-      </div>
-      <div className="flex justify-between items-center mb-6">
-        <Button
-          variant="outline"
-          onClick={() => {
-            const prevMonth = new Date(selectedMonth);
-            prevMonth.setMonth(prevMonth.getMonth() - 1);
-            setSelectedMonth(prevMonth);
-          }}
-        >
-          Previous Month
-        </Button>
-        <span className="text-lg font-bold hidden md:block">
-          {format(selectedMonth, "MMMM yyyy")}
-        </span>
-        <Button
-          variant="outline"
-          onClick={() => {
-            const nextMonth = new Date(selectedMonth);
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-            setSelectedMonth(nextMonth);
-          }}
-        >
-          Next Month
-        </Button>
-      </div>
+}) => {
+  // State to track which date's tooltip is visible
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: 31 }, (_, i) => {
-          const day = i + 1;
-          const currentDate = new Date(Date.UTC(
-            selectedMonth.getUTCFullYear(),
-            selectedMonth.getUTCMonth(),
-            day,
-            0, 0, 0, 0
-          ));
+  return (
+    <Card className="bg-white shadow-lg">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-xl font-bold text-gray-900">Mood Tracking</CardTitle>
+        <div className="flex items-center space-x-2">
+          {["happy", "neutral", "sad"].map((mood) => (
+            <div key={mood} className="flex items-center space-x-1">
+              <div
+                className={cn(
+                  "h-3 w-3 rounded-full",
+                  mood === "happy" && "bg-green-500",
+                  mood === "neutral" && "bg-blue-500",
+                  mood === "sad" && "bg-red-500",
+                )}
+              />
+              <span className="text-xs text-gray-600 capitalize">{mood}</span>
+            </div>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center mb-4 md:hidden">
+          <span className="text-lg font-bold">
+            {format(selectedMonth, "MMMM yyyy")}
+          </span>
+        </div>
+        <div className="flex justify-between items-center mb-6">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const prevMonth = new Date(selectedMonth);
+              prevMonth.setMonth(prevMonth.getMonth() - 1);
+              setSelectedMonth(prevMonth);
+            }}
+          >
+            Previous Month
+          </Button>
+          <span className="text-lg font-bold hidden md:block">
+            {format(selectedMonth, "MMMM yyyy")}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const nextMonth = new Date(selectedMonth);
+              nextMonth.setMonth(nextMonth.getMonth() + 1);
+              setSelectedMonth(nextMonth);
+            }}
+          >
+            Next Month
+          </Button>
+        </div>
 
-          if (currentDate.getUTCMonth() !== selectedMonth.getUTCMonth()) {
-            return <div key={day} className="h-10 w-10" />;
-          }
+        <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: 31 }, (_, i) => {
+            const day = i + 1;
+            const currentDate = new Date(Date.UTC(
+              selectedMonth.getUTCFullYear(),
+              selectedMonth.getUTCMonth(),
+              day,
+              0, 0, 0, 0
+            ));
 
-          const dateString = format(currentDate, "yyyy-MM-dd");
-          const mood = moodData[dateString];
+            if (currentDate.getUTCMonth() !== selectedMonth.getUTCMonth()) {
+              return <div key={day} className="h-10 w-10" />;
+            }
 
-          let bgColor = "bg-gray-200";
-          if (mood === "happy") bgColor = "bg-green-500";
-          if (mood === "neutral") bgColor = "bg-blue-500";
-          if (mood === "sad") bgColor = "bg-red-500";
+            const dateString = format(currentDate, "yyyy-MM-dd");
+            const mood = moodData[dateString];
 
-          return (
-            <div
-              key={day}
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full text-sm",
+            let bgColor = "bg-gray-200";
+            if (mood === "happy") bgColor = "bg-green-500";
+            if (mood === "neutral") bgColor = "bg-blue-500";
+            if (mood === "sad") bgColor = "bg-red-500";
+
+            const isToday = currentDate.getTime() === new Date().setHours(10, 10, 10, 10);
+
+            return (
+                <div
+                key={day}
+                className="relative group"
+                onMouseEnter={() => setHoveredDate(dateString)}
+                onMouseLeave={() => setHoveredDate(null)}
+                >
+                <div
+                className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-pointer transition-all",
                 bgColor,
                 mood ? "text-white" : "text-gray-900",
-              )}
-            >
-              {day}
-            </div>
-          );
-        })}
-      </div>
-    </CardContent>
-  </Card>
-));
+                hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
+                isToday && "border-2 border-indigo-500"
+                )}
+                >
+                {day}
+                </div>
 
+                {/* Tooltip showing mood reason */}
+                {hoveredDate === dateString && (
+                <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
+                {currentDate.getTime() <= new Date().setHours(23, 59, 59, 999) ? (
+                  mood ? (
+                  <>
+                  <div
+                  className={cn(
+                    "font-medium capitalize",
+                    mood === "happy" && "text-green-500",
+                    mood === "neutral" && "text-blue-500",
+                    mood === "sad" && "text-red-500"
+                  )}
+                  >
+                  {mood}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                  {format(currentDate, "MMMM d, yyyy")}
+                  </div>
+                  </>
+                  ) : (
+                  <>
+                  <div className="font-medium text-gray-500">
+                  No mood recorded
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                  {format(currentDate, "MMMM d, yyyy")}
+                  </div>
+                  </>
+                  )
+                ) : (
+                  <>
+                  <div className="font-medium text-indigo-500">
+                  Mood tracking not available yet
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                  {format(currentDate, "MMMM d, yyyy")}
+                  </div>
+                  </>
+                )}
+                </div>
+                )}
+                </div>
+            );
+            })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
 const ResourcesCard = React.memo(() => (
   <Card className="bg-white shadow-lg">
     <CardHeader className="flex flex-row items-center justify-between">
