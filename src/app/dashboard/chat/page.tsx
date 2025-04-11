@@ -15,6 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Message {
   id: string
@@ -369,7 +375,7 @@ const MindeaseChatbot: React.FC = () => {
               variant="outline"
               onClick={() => {
                 setShowExitWarning(false)
-                router.push('/dashboard') 
+                router.push('/dashboard')
               }}
             >
               Leave Without Saving
@@ -484,15 +490,28 @@ const MindeaseChatbot: React.FC = () => {
       <div className="sticky bottom-0 p-3 border-t bg-white shadow-md">
         <div className="flex items-end gap-2 w-full max-w-4xl mx-auto">
           {/* Voice input button */}
-          <Button
-            onClick={toggleListening}
-            variant={isListening ? "destructive" : "outline"}
-            size="icon"
-            className={`rounded-lg h-[50px] w-[50px] flex items-center justify-center ${isListening ? 'bg-red-500 text-white' : 'text-neutral-600'
-              }`}
-          >
-            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={toggleListening}
+                  variant={isListening ? "destructive" : "outline"}
+                  size="icon"
+                  className={`rounded-lg h-[50px] w-[50px] flex items-center justify-center ${isListening ? 'bg-red-500 text-white' : 'text-neutral-600'
+                    }`}
+                >
+                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="center" className="">
+                {isListening ? (
+                  <p>Click to stop recording<br /><span className="text-xs text-neutral-500">Currently listening...</span></p>
+                ) : (
+                  <p>Click to speak<br /><span className="text-xs text-neutral-500">Press to record</span></p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Input container */}
           <div className="relative flex-grow flex items-end">
