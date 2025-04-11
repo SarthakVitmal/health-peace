@@ -60,9 +60,6 @@ const MindeaseChatbot: React.FC = () => {
 
         if (response.ok) {
           setUserId(data.user._id)
-        } else {
-          toast.error("Session expired. Please login again.")
-          router.push("/login")
         }
       } catch (error) {
         console.error("Error fetching user data:", error)
