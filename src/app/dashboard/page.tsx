@@ -25,6 +25,7 @@ import { toast, Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // For React Native
 import {
   Sidebar,
   SidebarContent,
@@ -57,7 +58,8 @@ interface Resource {
   href: string;
 }
 
-// Static Data
+// Constants
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 const RESOURCES: Resource[] = [
   {
     title: "Understanding Anxiety",
@@ -112,7 +114,7 @@ const ACTIONS = [
     icon: AlertOctagon,
     href: "/dashboard/emergency-assistance",
     color: "text-red-600",
-    variant: "destructive",
+    variant: "",
   },
 ];
 
@@ -136,6 +138,51 @@ const FALLBACK_QUOTES = [
   }
 ];
 
+// Custom Hook for Debounce
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
+          Something went wrong. Please try refreshing the page.
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function MentalEaseDashboard() {
   const [firstName, setFirstName] = useState("");
   const [userId, setUserId] = useState("");
@@ -144,6 +191,7 @@ export default function MentalEaseDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [dailyQuote, setDailyQuote] = useState<DailyQuote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMoodLoading, setIsMoodLoading] = useState(false);
   const [error, setError] = useState("");
   const abortController = useRef(new AbortController());
   const retryCountRef = useRef(0);
@@ -151,6 +199,7 @@ export default function MentalEaseDashboard() {
   const router = useRouter();
   const { data: session } = useSession();
   const { isLoggedIn, checkAuthStatus } = useAuth();
+  const debouncedSelectedMonth = useDebounce(selectedMonth, 500);
 
   // Memoized mood summary
   const { moodSummary, totalMoods } = useMemo(() => {
@@ -164,7 +213,18 @@ export default function MentalEaseDashboard() {
     };
   }, [moodData]);
 
-  const fetchWithRetry = useCallback(async (url: string, options: RequestInit = {}, retries = 3) => {
+  const fetchWithRetry = useCallback(async (url: string, options: RequestInit = {}, retries = 3, cacheKey?: string) => {
+    // Check cache first if cacheKey is provided
+    if (cacheKey) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          return data;
+        }
+      }
+    }
+
     try {
       const response = await fetch(url, {
         ...options,
@@ -177,11 +237,21 @@ export default function MentalEaseDashboard() {
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
+      const data = await response.json();
+      
+      // Cache the response if cacheKey is provided
+      if (cacheKey) {
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+      }
+      
+      return data;
     } catch (error) {
       if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)));
-        return fetchWithRetry(url, options, retries - 1);
+        return fetchWithRetry(url, options, retries - 1, cacheKey);
       }
       throw error;
     }
@@ -189,7 +259,12 @@ export default function MentalEaseDashboard() {
 
   const fetchUserData = useCallback(async () => {
     try {
-      const userData = await fetchWithRetry("/api/auth/user");
+      const userData = await fetchWithRetry(
+        "/api/auth/user", 
+        {}, 
+        3, 
+        `user-${session?.user?.email}`
+      );
       setFirstName(userData.user.firstName);
       setUserId(userData.user._id);
       setError("");
@@ -202,13 +277,21 @@ export default function MentalEaseDashboard() {
         router.replace("/login");
       }
     }
-  }, [fetchWithRetry, router]);
+  }, [fetchWithRetry, router, session]);
 
   const fetchMoodData = useCallback(async () => {
     if (!userId) return;
+    setIsMoodLoading(true);
     try {
       const month = format(selectedMonth, "yyyy-MM");
-      const data = await fetchWithRetry(`/api/mood?userId=${userId}&month=${month}`);
+      const cacheKey = `mood-${userId}-${month}`;
+      
+      const data = await fetchWithRetry(
+        `/api/mood?userId=${userId}&month=${month}`,
+        {},
+        3,
+        cacheKey
+      );
       
       const formattedData = data.moods.reduce((acc: MoodData, mood: { date: string; mood: string }) => {
         acc[format(new Date(mood.date), "yyyy-MM-dd")] = mood.mood;
@@ -217,6 +300,20 @@ export default function MentalEaseDashboard() {
       setMoodData(formattedData);
     } catch (error) {
       console.error("Mood data fetch error:", error);
+      // Optionally load from cache if available
+      const month = format(selectedMonth, "yyyy-MM");
+      const cacheKey = `mood-${userId}-${month}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data } = JSON.parse(cached);
+        const formattedData = data.moods.reduce((acc: MoodData, mood: { date: string; mood: string }) => {
+          acc[format(new Date(mood.date), "yyyy-MM-dd")] = mood.mood;
+          return acc;
+        }, {});
+        setMoodData(formattedData);
+      }
+    } finally {
+      setIsMoodLoading(false);
     }
   }, [userId, selectedMonth, fetchWithRetry]);
 
@@ -224,7 +321,12 @@ export default function MentalEaseDashboard() {
     if (!userId) return;
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const data = await fetchWithRetry(`/api/mood?userId=${userId}&date=${today}`);
+      const data = await fetchWithRetry(
+        `/api/mood?userId=${userId}&date=${today}`,
+        {},
+        3,
+        `mood-check-${userId}-${today}`
+      );
       if (!data.mood) setIsMoodModalOpen(true);
     } catch (error) {
       console.error("Mood check error:", error);
@@ -239,20 +341,34 @@ export default function MentalEaseDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, mood, today: format(new Date(), "yyyy-MM-dd") })
       });
+      
+      // Invalidate cache for current month
+      const month = format(selectedMonth, "yyyy-MM");
+      localStorage.removeItem(`mood-${userId}-${month}`);
+      
       await fetchMoodData();
       toast.success("Mood recorded successfully!");
     } catch (error) {
       toast.error("Failed to record mood");
     }
-  }, [userId, fetchMoodData, fetchWithRetry]);
+  }, [userId, fetchMoodData, fetchWithRetry, selectedMonth]);
 
   const fetchDailyQuote = useCallback(async () => {
     try {
       const cachedQuote = localStorage.getItem('dailyQuote');
-      if (cachedQuote) setDailyQuote(JSON.parse(cachedQuote));
+      if (cachedQuote) {
+        const { data, timestamp } = JSON.parse(cachedQuote);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          setDailyQuote(data);
+          return;
+        }
+      }
       
       const data = await fetchWithRetry('/api/quotes');
-      localStorage.setItem('dailyQuote', JSON.stringify(data));
+      localStorage.setItem('dailyQuote', JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
       setDailyQuote(data);
     } catch (error) {
       setDailyQuote(FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)]);
@@ -260,20 +376,33 @@ export default function MentalEaseDashboard() {
   }, [fetchWithRetry]);
 
   useEffect(() => {
+    if (userId) {
+      fetchMoodData();
+    }
+  }, [debouncedSelectedMonth, userId, fetchMoodData]);
+
+  useEffect(() => {
     const initDashboard = async () => {
       try {
         const isValid = await checkAuthStatus();
         if (!isValid) return router.replace("/login");
 
-        await Promise.all([
-          fetchUserData(),
-          fetchDailyQuote()
+        // Parallelize only non-dependent calls
+        const [userData, quoteData] = await Promise.all([
+          fetchWithRetry("/api/auth/user", {}, 3, `user-${session?.user?.email}`),
+          fetchDailyQuote() // Already has caching
         ]);
-        
+
+        setFirstName(userData.user.firstName);
+        setUserId(userData.user._id);
+        setError("");
+
+        // Sequential for dependent calls
         await fetchMoodData();
-        checkMoodStatus();
+        await checkMoodStatus();
       } catch (error) {
         setError("Failed to initialize dashboard");
+        console.error("Initialization error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -285,7 +414,7 @@ export default function MentalEaseDashboard() {
       abortController.current.abort();
       abortController.current = new AbortController();
     };
-  }, [checkAuthStatus, fetchUserData, fetchMoodData, fetchDailyQuote, checkMoodStatus, router]);
+  }, [checkAuthStatus, router, session, fetchDailyQuote, fetchMoodData, checkMoodStatus, fetchUserData, fetchWithRetry]);
 
   if (isLoading) return <Loader />;
 
@@ -347,36 +476,39 @@ export default function MentalEaseDashboard() {
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-8 bg-gradient-to-b from-gray-50 to-white">
           <div className="mx-auto w-full max-w-7xl">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-2">Welcome back to MentalEase. How are you feeling today?</p>
-            </div>
+            <ErrorBoundary>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                <p className="text-gray-600 mt-2">Welcome back to MentalEase. How are you feeling today?</p>
+              </div>
 
-            <div className="grid gap-8">
-              <WelcomeCard
-                firstName={firstName}
-                isMoodModalOpen={isMoodModalOpen}
-                setIsMoodModalOpen={setIsMoodModalOpen}
-                handleMoodSelection={handleMoodSelection}
-              />
+              <div className="grid gap-8">
+                <WelcomeCard
+                  firstName={firstName}
+                  isMoodModalOpen={isMoodModalOpen}
+                  setIsMoodModalOpen={setIsMoodModalOpen}
+                  handleMoodSelection={handleMoodSelection}
+                />
 
-              <DailyQuoteCard dailyQuote={dailyQuote} />
+                <DailyQuoteCard dailyQuote={dailyQuote} />
 
-              <QuickActionsCard />
+                <QuickActionsCard />
 
-              <MoodSummaryCard
-                moodSummary={moodSummary}
-                totalMoods={totalMoods}
-              />
+                <MoodSummaryCard
+                  moodSummary={moodSummary}
+                  totalMoods={totalMoods}
+                />
 
-              <MoodTrackingCalendar
-                moodData={moodData}
-                selectedMonth={selectedMonth}
-                setSelectedMonth={setSelectedMonth}
-              />
+                <MoodTrackingCalendar
+                  moodData={moodData}
+                  selectedMonth={selectedMonth}
+                  setSelectedMonth={setSelectedMonth}
+                  isMoodLoading={isMoodLoading}
+                />
 
-              <ResourcesCard />
-            </div>
+                <ResourcesCard />
+              </div>
+            </ErrorBoundary>
           </div>
         </main>
 
@@ -465,8 +597,11 @@ const QuickActionsCard = React.memo(() => (
         {ACTIONS.map((action) => (
           <Button
             key={action.title}
-            variant="outline"
-            className="flex h-24 flex-col items-center justify-center gap-2 bg-white hover:bg-gray-50"
+            variant={action.variant as any || "outline"}
+            className={cn(
+              "flex h-24 flex-col items-center justify-center gap-2 hover:bg-gray-50",
+              !action.variant && "bg-white"
+            )}
             asChild
           >
             <Link href={action.href}>
@@ -521,11 +656,89 @@ const MoodSummaryCard = React.memo(({ moodSummary, totalMoods }: any) => {
   );
 });
 
-const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedMonth }: any) => {
+const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedMonth, isMoodLoading }: any) => {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  // Memoize the days rendering
+  const renderedDays = useMemo(() => {
+    return daysInMonth.map((date) => {
+      const dateString = format(date, "yyyy-MM-dd");
+      const mood = moodData[dateString];
+      const isCurrentMonth = isSameMonth(date, selectedMonth);
+      const isFutureDate = date > new Date();
+
+      if (!isCurrentMonth) return <div key={dateString} className="h-10 w-10" />;
+
+      let bgColor = "bg-gray-200";
+      if (mood === "happy") bgColor = "bg-green-500";
+      if (mood === "neutral") bgColor = "bg-blue-500";
+      if (mood === "sad") bgColor = "bg-red-500";
+
+      return (
+        <div
+          key={dateString}
+          className="relative group"
+          onMouseEnter={() => !isFutureDate && setHoveredDate(dateString)}
+          onMouseLeave={() => setHoveredDate(null)}
+        >
+          <div
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-default transition-all",
+              bgColor,
+              mood ? "text-white" : "text-gray-900",
+              hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
+              isToday(date) && "border-2 border-indigo-500"
+            )}
+          >
+            {format(date, "d")}
+          </div>
+
+          {hoveredDate === dateString && (
+            <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
+              {isFutureDate ? (
+                <>
+                  <div className="font-medium text-indigo-500">
+                    Future Date
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {format(date, "MMMM d, yyyy")}
+                  </div>
+                </>
+              ) : mood ? (
+                <>
+                  <div
+                    className={cn(
+                      "font-medium capitalize",
+                      mood === "happy" && "text-green-500",
+                      mood === "neutral" && "text-blue-500",
+                      mood === "sad" && "text-red-500"
+                    )}
+                  >
+                    {mood}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {format(date, "MMMM d, yyyy")}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="font-medium text-gray-500">
+                    No mood recorded
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {format(date, "MMMM d, yyyy")}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    });
+  }, [daysInMonth, moodData, selectedMonth]);
 
   return (
     <Card className="bg-white shadow-lg">
@@ -571,82 +784,15 @@ const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedM
           </Button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {daysInMonth.map((date) => {
-            const dateString = format(date, "yyyy-MM-dd");
-            const mood = moodData[dateString];
-            const isCurrentMonth = isSameMonth(date, selectedMonth);
-            const isFutureDate = date > new Date();
-
-            if (!isCurrentMonth) return <div key={dateString} className="h-10 w-10" />;
-
-            let bgColor = "bg-gray-200";
-            if (mood === "happy") bgColor = "bg-green-500";
-            if (mood === "neutral") bgColor = "bg-blue-500";
-            if (mood === "sad") bgColor = "bg-red-500";
-
-            return (
-              <div
-                key={dateString}
-                className="relative group"
-                onMouseEnter={() => !isFutureDate && setHoveredDate(dateString)}
-                onMouseLeave={() => setHoveredDate(null)}
-              >
-                <div
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full text-sm cursor-default transition-all",
-                    bgColor,
-                    mood ? "text-white" : "text-gray-900",
-                    hoveredDate === dateString && "ring-2 ring-offset-2 ring-indigo-500",
-                    isToday(date) && "border-2 border-indigo-500"
-                  )}
-                >
-                  {format(date, "d")}
-                </div>
-
-                {hoveredDate === dateString && (
-                  <div className="absolute z-10 w-30 p-2 mt-2 text-sm text-indigo-700 bg-white border border-indigo-200 rounded-lg shadow-lg">
-                    {isFutureDate ? (
-                      <>
-                        <div className="font-medium text-indigo-500">
-                          Future Date
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {format(date, "MMMM d, yyyy")}
-                        </div>
-                      </>
-                    ) : mood ? (
-                      <>
-                        <div
-                          className={cn(
-                            "font-medium capitalize",
-                            mood === "happy" && "text-green-500",
-                            mood === "neutral" && "text-blue-500",
-                            mood === "sad" && "text-red-500"
-                          )}
-                        >
-                          {mood}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {format(date, "MMMM d, yyyy")}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="font-medium text-gray-500">
-                          No mood recorded
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {format(date, "MMMM d, yyyy")}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {isMoodLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 gap-1">
+            {renderedDays}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
