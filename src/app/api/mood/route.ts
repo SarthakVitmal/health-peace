@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         { 
           message: "Mood already recorded today", 
           alreadyRecorded: true,
-          mood: existingMood 
+          mood: existingMood,
         },
         { status: 200 }
       );
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const newMood = await Mood.create({ 
       userId, 
       mood, 
-      date: todayUTC // Store the UTC date
+      date: todayUTC
     });
     
     return NextResponse.json(

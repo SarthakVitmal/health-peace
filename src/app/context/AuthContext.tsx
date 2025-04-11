@@ -75,14 +75,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      if (response.ok) {
+        localStorage.clear();
+        sessionStorage.clear();
       setIsLoggedIn(false);
       if (refreshInterval.current) clearTimeout(refreshInterval.current);
       router.replace("/");
       toast.success("Logged out successfully");
+      }
     } catch (error) {
       console.error("Logout failed:", error);
       toast.error("Logout failed. Please try again.");

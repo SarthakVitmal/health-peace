@@ -237,7 +237,7 @@ export default function MentalEaseDashboard() {
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      
+
       // Cache the response if cacheKey is provided
       if (cacheKey) {
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -245,7 +245,7 @@ export default function MentalEaseDashboard() {
           timestamp: Date.now()
         }));
       }
-      
+
       return data;
     } catch (error) {
       if (retries > 0) {
@@ -259,9 +259,9 @@ export default function MentalEaseDashboard() {
   const fetchUserData = useCallback(async () => {
     try {
       const userData = await fetchWithRetry(
-        "/api/auth/user", 
-        {}, 
-        3, 
+        "/api/auth/user",
+        {},
+        3,
         `user-${session?.user?.email}`
       );
       setFirstName(userData.user.firstName);
@@ -284,14 +284,14 @@ export default function MentalEaseDashboard() {
     try {
       const month = format(selectedMonth, "yyyy-MM");
       const cacheKey = `mood-${userId}-${month}`;
-      
+
       const data = await fetchWithRetry(
         `/api/mood?userId=${userId}&month=${month}`,
         {},
         3,
         cacheKey
       );
-      
+
       const formattedData = data.moods.reduce((acc: MoodData, mood: { date: string; mood: string }) => {
         acc[format(new Date(mood.date), "yyyy-MM-dd")] = mood.mood;
         return acc;
@@ -320,31 +320,42 @@ export default function MentalEaseDashboard() {
     if (!userId) return;
     try {
       const today = format(new Date(), "yyyy-MM-dd");
-      const data = await fetchWithRetry(
+      const response = await fetchWithRetry(
         `/api/mood?userId=${userId}&date=${today}`,
         {},
         3,
         `mood-check-${userId}-${today}`
       );
-      if (!data.mood) setIsMoodModalOpen(true);
+      if (response.mood) {
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error("Mood check error:", error);
+      return false;
     }
   }, [userId, fetchWithRetry]);
 
   const handleMoodSelection = useCallback(async (mood: string) => {
     setIsMoodModalOpen(false);
     try {
-      await fetchWithRetry("/api/mood", {
+      const response = await fetchWithRetry("/api/mood", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, mood, today: format(new Date(), "yyyy-MM-dd") })
       });
-      
+
+      if (response.alreadyRecorded) {
+        toast.message("Mood already recorded today", {
+          description: `Your mood today: ${response.mood.mood}`,
+        });
+        return;
+      }
+
       // Invalidate cache for current month
       const month = format(selectedMonth, "yyyy-MM");
       localStorage.removeItem(`mood-${userId}-${month}`);
-      
+
       await fetchMoodData();
       toast.success("Mood recorded successfully!");
     } catch (error) {
@@ -362,7 +373,7 @@ export default function MentalEaseDashboard() {
           return;
         }
       }
-      
+
       const data = await fetchWithRetry('/api/quotes');
       localStorage.setItem('dailyQuote', JSON.stringify({
         data,
@@ -487,6 +498,7 @@ export default function MentalEaseDashboard() {
                   isMoodModalOpen={isMoodModalOpen}
                   setIsMoodModalOpen={setIsMoodModalOpen}
                   handleMoodSelection={handleMoodSelection}
+                  userId={userId}
                 />
 
                 <DailyQuoteCard dailyQuote={dailyQuote} />
@@ -518,53 +530,111 @@ export default function MentalEaseDashboard() {
 }
 
 // Memoized Components
-const WelcomeCard = React.memo(({ firstName, isMoodModalOpen, setIsMoodModalOpen, handleMoodSelection }: any) => (
-  <Card className="bg-white shadow-lg">
-    <CardContent className="p-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Welcome {firstName}</h2>
-          <p className="mt-1 text-gray-600">Your personal mental health companion</p>
+// Memoized Components
+const WelcomeCard = React.memo(({
+  firstName,
+  isMoodModalOpen,
+  setIsMoodModalOpen,
+  handleMoodSelection,
+  userId
+}: {
+  firstName: string;
+  isMoodModalOpen: boolean;
+  setIsMoodModalOpen: (open: boolean) => void;
+  handleMoodSelection: (mood: string) => void;
+  userId: string;
+}) => {
+  const [hasRecordedToday, setHasRecordedToday] = useState(false);
+  const [currentMood, setCurrentMood] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkTodayMood = async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      try {
+        const response = await fetch(`/api/mood?userId=${userId}&date=${today}`);
+        const data = await response.json();
+        if (data.mood) {
+          setHasRecordedToday(true);
+          setCurrentMood(data.mood.mood);
+        }
+      } catch (error) {
+        console.error("Error checking today's mood:", error);
+      }
+    };
+    checkTodayMood();
+  }, [userId]);
+
+  const handleMoodClick = () => {
+    if (hasRecordedToday) {
+      toast.message("You've already recorded your mood today", {
+        description: `Your mood today: ${currentMood}`,
+      });
+    } else {
+      setIsMoodModalOpen(true);
+    }
+  };
+
+  return (
+    <Card className="bg-white shadow-lg">
+      <CardContent className="p-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Welcome {firstName}</h2>
+            <p className="mt-1 text-gray-600">Your personal mental health companion</p>
+            {hasRecordedToday && currentMood && (
+              <p className="mt-2 text-sm text-green-600">
+                You've recorded your mood today as {currentMood}
+              </p>
+            )}
+          </div>
+
+          <Dialog open={isMoodModalOpen} onOpenChange={setIsMoodModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>How are you feeling today?</DialogTitle>
+              </DialogHeader>
+              <div className="flex justify-center gap-4">
+                <Button
+                  className="bg-green-500 text-white hover:bg-green-600"
+                  onClick={() => handleMoodSelection("happy")}
+                >
+                  😊 Happy
+                </Button>
+                <Button
+                  className="bg-yellow-500 text-white hover:bg-yellow-600"
+                  onClick={() => handleMoodSelection("neutral")}
+                >
+                  😐 Neutral
+                </Button>
+                <Button
+                  className="bg-red-500 text-white hover:bg-red-600"
+                  onClick={() => handleMoodSelection("sad")}
+                >
+                  😔 Sad
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleMoodClick}
+              className="gap-2 bg-indigo-600 hover:bg-indigo-700"
+            >
+              {hasRecordedToday ? "View Today's Mood" : "Record Mood"}
+            </Button>
+            <Button asChild className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+              <Link href="/dashboard/chat">
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat with AI</span>
+              </Link>
+            </Button>
+          </div>
         </div>
-
-        <Dialog open={isMoodModalOpen} onOpenChange={setIsMoodModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>How are you feeling today?</DialogTitle>
-            </DialogHeader>
-            <div className="flex justify-center gap-4">
-              <Button
-                className="bg-green-500 text-white hover:bg-green-600"
-                onClick={() => handleMoodSelection("happy")}
-              >
-                😊 Happy
-              </Button>
-              <Button
-                className="bg-yellow-500 text-white hover:bg-yellow-600"
-                onClick={() => handleMoodSelection("neutral")}
-              >
-                😐 Neutral
-              </Button>
-              <Button
-                className="bg-red-500 text-white hover:bg-red-600"
-                onClick={() => handleMoodSelection("sad")}
-              >
-                😔 Sad
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Button asChild className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-          <Link href="/dashboard/chat">
-            <MessageSquare className="h-4 w-4" />
-            <span>Chat with AI</span>
-          </Link>
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-));
+      </CardContent>
+    </Card>
+  );
+});
 
 const DailyQuoteCard = React.memo(({ dailyQuote }: any) => (
   <Card className="bg-white shadow-lg">
@@ -761,7 +831,7 @@ const MoodTrackingCalendar = React.memo(({ moodData, selectedMonth, setSelectedM
       </CardHeader>
       <CardContent>
         <div className="md:hidden flex justify-center items-center mb-4">
-        <span className="text-lg font-bold">
+          <span className="text-lg font-bold">
             {format(selectedMonth, "MMMM yyyy")}
           </span>
         </div>
