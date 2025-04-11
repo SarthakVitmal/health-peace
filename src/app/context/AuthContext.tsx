@@ -1,8 +1,8 @@
 "use client";
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef} from "react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // For React Native; use localStorage for web
+import AsyncStorage from "@react-native-async-storage/async-storage"; 
 
 interface AuthContextType {
   isLoggedIn: boolean | null;
@@ -23,37 +23,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
 
   const checkAuthStatus = async (signal?: AbortSignal): Promise<boolean> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
-
     try {
-      const response = await fetch("/api/auth/validate", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Ensure cookies work in WebView (sharedCookiesEnabled on iOS)
-        signal: signal || controller.signal,
+      const response = await fetch('/api/auth/validate', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        signal,
       });
-      clearTimeout(timeoutId);
-
+      
       if (!response.ok) return false;
-
+      
       const data = await response.json();
       if (data.expiresAt) {
         scheduleTokenRefresh(data.expiresAt);
-        // Cache the new auth state
-        await AsyncStorage.setItem(
-          "authState",
-          JSON.stringify({
-            isLoggedIn: data.isAuthenticated,
-            expiresAt: data.expiresAt,
-          })
-        );
       }
       return data.isAuthenticated;
     } catch (error) {
-      clearTimeout(timeoutId);
-      if (!(error instanceof DOMException)) {
-        // Ignore abort errors
+      if (!(error instanceof DOMException)) { // Ignore abort errors
         console.error("Auth validation error:", error);
       }
       return false;
@@ -61,11 +47,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const scheduleTokenRefresh = (expiresAt: number) => {
-    const refreshTime = expiresAt * 1000 - Date.now() - 300000; // Refresh 5 minutes before expiry
+    const refreshTime = expiresAt * 1000 - Date.now() - 300000;
     if (refreshInterval.current) clearTimeout(refreshInterval.current);
     refreshInterval.current = setTimeout(async () => {
       try {
-        await fetch("/api/auth/refresh", { credentials: "include" });
+        await fetch('/api/auth/refresh', { credentials: 'include' });
         const isValid = await checkAuthStatus();
         setIsLoggedIn(isValid);
       } catch (error) {
@@ -78,28 +64,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (redirect = "/dashboard") => {
     try {
       const isValid = await checkAuthStatus();
-      setIsLoggedIn(isValid);
       if (isValid) {
-        // In WebView, consider postMessage to native navigation if needed
+        setIsLoggedIn(true);
         router.replace(redirect);
-      } else {
-        router.replace("/login");
       }
     } catch (error) {
       console.error("Login validation failed:", error);
       setIsLoggedIn(false);
-      router.replace("/login");
     }
   };
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
       });
       setIsLoggedIn(false);
-      await AsyncStorage.removeItem("authState");
       if (refreshInterval.current) clearTimeout(refreshInterval.current);
       router.replace("/");
       toast.success("Logged out successfully");
@@ -149,6 +130,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, [router]);
 
+  // Render children immediately, no blocking loader
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout, checkAuthStatus }}>
       {children}
@@ -160,7 +142,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
