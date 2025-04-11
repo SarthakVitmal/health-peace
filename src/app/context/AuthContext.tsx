@@ -2,7 +2,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef} from "react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import AsyncStorage from "@react-native-async-storage/async-storage"; 
 
 interface AuthContextType {
   isLoggedIn: boolean | null;
@@ -92,45 +91,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const controller = new AbortController();
-    const initializeAuth = async () => {
-      try {
-        // Check cached auth state first
-        const cachedAuth = await AsyncStorage.getItem("authState");
-        let initialState = false;
-        if (cachedAuth) {
-          const { isLoggedIn, expiresAt } = JSON.parse(cachedAuth);
-          // Use cached state if token hasn't expired
-          if (expiresAt > Date.now() / 1000 + 300) {
-            initialState = isLoggedIn;
-          }
-        }
-        setIsLoggedIn(initialState); // Render UI immediately
-
-        // Validate with server in background
-        const isValid = await checkAuthStatus(controller.signal);
-        setIsLoggedIn(isValid);
-
-        // Redirect based on auth status
-        if (isValid && window.location.pathname === "/login") {
-          router.replace("/dashboard");
-        } else if (!isValid && window.location.pathname !== "/login") {
-          router.replace("/login");
-        }
-      } catch (error) {
-        console.error("Initial auth check failed:", error);
-        setIsLoggedIn(false);
-        router.replace("/login");
-      }
+    const validateAuth = async () => {
+      const isValid = await checkAuthStatus(controller.signal);
+      setIsLoggedIn(isValid);
     };
+    validateAuth();
+    return () => controller.abort();
+  }, []);
 
-    initializeAuth();
-    return () => {
-      controller.abort();
-      if (refreshInterval.current) clearTimeout(refreshInterval.current);
-    };
-  }, [router]);
+  if (isLoggedIn === null) {
+    return <div className="flex justify-center items-center min-h-screen text-gray-600">Checking authentication status, please wait...</div>;
+  }
 
-  // Render children immediately, no blocking loader
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout, checkAuthStatus }}>
       {children}
