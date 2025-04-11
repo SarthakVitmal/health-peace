@@ -25,7 +25,6 @@ import { toast, Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import AsyncStorage from '@react-native-async-storage/async-storage'; // For React Native
 import {
   Sidebar,
   SidebarContent,
@@ -424,7 +423,7 @@ export default function MentalEaseDashboard() {
         <AlertOctagon className="h-12 w-12 text-red-500 mx-auto" />
         <h2 className="text-2xl font-bold text-gray-900">Loading Error</h2>
         <p className="text-gray-600">Failed to load dashboard data</p>
-        <Button onClick={() => window.location.reload()} className="gap-2">
+        <Button onClick={() => router.refresh()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Try Again
         </Button>

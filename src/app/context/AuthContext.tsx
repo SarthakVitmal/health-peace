@@ -1,8 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import AsyncStorage from "@react-native-async-storage/async-storage"; 
 
 interface AuthContextType {
   isLoggedIn: boolean | null;
@@ -20,17 +19,38 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const router = useRouter();
+  const pathname = usePathname(); // Next.js hook for current path
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Safe storage functions for client-side only
+  const getStorageItem = async (key: string) => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(key);
+    }
+    return null;
+  };
+
+  const setStorageItem = async (key: string, value: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, value);
+    }
+  };
+
+  const removeStorageItem = async (key: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(key);
+    }
+  };
 
   const checkAuthStatus = async (signal?: AbortSignal): Promise<boolean> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
       const response = await fetch("/api/auth/validate", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Ensure cookies work in WebView (sharedCookiesEnabled on iOS)
+        credentials: "include",
         signal: signal || controller.signal,
       });
       clearTimeout(timeoutId);
@@ -40,8 +60,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const data = await response.json();
       if (data.expiresAt) {
         scheduleTokenRefresh(data.expiresAt);
-        // Cache the new auth state
-        await AsyncStorage.setItem(
+        await setStorageItem(
           "authState",
           JSON.stringify({
             isLoggedIn: data.isAuthenticated,
@@ -53,7 +72,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       clearTimeout(timeoutId);
       if (!(error instanceof DOMException)) {
-        // Ignore abort errors
         console.error("Auth validation error:", error);
       }
       return false;
@@ -61,7 +79,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const scheduleTokenRefresh = (expiresAt: number) => {
-    const refreshTime = expiresAt * 1000 - Date.now() - 300000; // Refresh 5 minutes before expiry
+    const refreshTime = expiresAt * 1000 - Date.now() - 300000;
     if (refreshInterval.current) clearTimeout(refreshInterval.current);
     refreshInterval.current = setTimeout(async () => {
       try {
@@ -80,7 +98,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const isValid = await checkAuthStatus();
       setIsLoggedIn(isValid);
       if (isValid) {
-        // In WebView, consider postMessage to native navigation if needed
         router.replace(redirect);
       } else {
         router.replace("/login");
@@ -99,7 +116,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         credentials: "include",
       });
       setIsLoggedIn(false);
-      await AsyncStorage.removeItem("authState");
+      await removeStorageItem("authState");
       if (refreshInterval.current) clearTimeout(refreshInterval.current);
       router.replace("/");
       toast.success("Logged out successfully");
@@ -114,25 +131,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const initializeAuth = async () => {
       try {
         // Check cached auth state first
-        const cachedAuth = await AsyncStorage.getItem("authState");
+        const cachedAuth = await getStorageItem("authState");
         let initialState = false;
         if (cachedAuth) {
           const { isLoggedIn, expiresAt } = JSON.parse(cachedAuth);
-          // Use cached state if token hasn't expired
           if (expiresAt > Date.now() / 1000 + 300) {
             initialState = isLoggedIn;
           }
         }
-        setIsLoggedIn(initialState); // Render UI immediately
+        setIsLoggedIn(initialState);
 
         // Validate with server in background
         const isValid = await checkAuthStatus(controller.signal);
         setIsLoggedIn(isValid);
 
-        // Redirect based on auth status
-        if (isValid && window.location.pathname === "/login") {
+        // Redirect based on auth status using Next.js pathname
+        if (isValid && pathname === "/login") {
           router.replace("/dashboard");
-        } else if (!isValid && window.location.pathname !== "/login") {
+        } else if (!isValid && pathname !== "/login") {
           router.replace("/login");
         }
       } catch (error) {
@@ -147,9 +163,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       controller.abort();
       if (refreshInterval.current) clearTimeout(refreshInterval.current);
     };
-  }, [router]);
+  }, [router, pathname]);
 
-  // Render children immediately, no blocking loader
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout, checkAuthStatus }}>
       {children}
